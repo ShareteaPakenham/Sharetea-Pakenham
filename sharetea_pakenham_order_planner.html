@@ -1,0 +1,2241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="default"/>
+<meta name="apple-mobile-web-app-title" content="Sharetea Orders"/>
+<title>Sharetea Pakenham — Order Planner</title>
+<style>
+:root{
+  --brand:#e63946;--ink:#1a1a1a;--ink2:#555;--ink3:#999;
+  --border:#e5e5e5;--border2:#d0d0d0;--bg:#f7f7f7;--white:#fff;
+  --green:#2d8a4e;--green-bg:#eaf4ee;--green-border:#b6dfc4;
+  --blue:#185fa5;--blue-bg:#e6f1fb;--blue-border:#a8cef5;
+  --amber:#854f0b;--amber-bg:#faeeda;--amber-border:#f0cc87;
+  --red:#a32d2d;--red-bg:#fcebeb;--red-border:#f0a8a8;
+  --radius:10px;--radius-sm:6px;--shadow:0 1px 4px rgba(0,0,0,0.08);
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--ink);font-size:15px}
+.app{max-width:640px;margin:0 auto;padding-bottom:90px}
+.topbar{background:var(--brand);color:white;padding:14px 16px;position:sticky;top:0;z-index:100;box-shadow:0 2px 8px rgba(0,0,0,0.15);display:flex;align-items:center;justify-content:space-between}
+.topbar-left h1{font-size:17px;font-weight:700}
+.topbar-left p{font-size:11px;opacity:.8;margin-top:2px}
+.sync-status{font-size:11px;opacity:.85;display:flex;align-items:center;gap:5px;background:rgba(255,255,255,0.15);padding:5px 9px;border-radius:99px}
+.sync-dot{width:7px;height:7px;border-radius:50%;background:#4ade80}
+.sync-dot.loading{background:#fbbf24;animation:pulse 1s infinite}
+.sync-dot.error{background:#f87171}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.bottomnav{position:fixed;bottom:0;left:0;right:0;background:white;border-top:1px solid var(--border);display:flex;z-index:100;max-width:640px;margin:0 auto}
+.navbtn{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:8px 2px 10px;font-size:9px;color:var(--ink3);cursor:pointer;border:none;background:none;font-family:inherit}
+.navbtn.active{color:var(--brand)}
+.navbtn svg{width:22px;height:22px}
+.page{display:none;padding-bottom:8px}
+.page.active{display:block}
+/* CARDS */
+.card{background:white;border-radius:var(--radius);box-shadow:var(--shadow);margin:12px;overflow:hidden}
+.card-title{font-size:12px;font-weight:700;color:var(--ink2);text-transform:uppercase;letter-spacing:.05em;padding:10px 14px 8px;border-bottom:1px solid var(--border)}
+.param-grid{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--border)}
+.param-cell{background:white;padding:10px 14px}
+.param-label{font-size:11px;color:var(--ink3);margin-bottom:4px}
+.param-input{width:100%;border:1.5px solid var(--border2);border-radius:var(--radius-sm);padding:7px 10px;font-size:15px;font-family:inherit;color:var(--ink);background:white}
+.param-input:focus{outline:none;border-color:var(--brand)}
+/* TIMELINE */
+.tl-wrap{margin:0 12px 8px}
+.tl-bar{height:26px;border-radius:6px;overflow:hidden;display:flex;border:1px solid var(--border2)}
+.tl-wait{background:var(--amber-bg);display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--amber);font-weight:700;padding:0 8px;white-space:nowrap}
+.tl-cover{flex:1;background:var(--blue-bg);display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--blue);font-weight:700;padding:0 8px;white-space:nowrap}
+.tl-labels{display:flex;justify-content:space-between;font-size:10px;color:var(--ink3);margin-top:3px}
+/* NOTICES */
+.notice{margin:0 12px 10px;padding:9px 12px;border-radius:var(--radius-sm);font-size:13px;line-height:1.5}
+.notice-blue{background:var(--blue-bg);color:var(--blue)}
+.notice-amber{background:var(--amber-bg);color:var(--amber)}
+.notice-green{background:var(--green-bg);color:var(--green)}
+.notice-red{background:var(--red-bg);color:var(--red)}
+.notice strong{font-weight:700;display:block;margin-bottom:2px}
+/* ITEMS */
+.section-hdr{padding:7px 14px 3px;font-size:11px;font-weight:700;color:var(--ink3);text-transform:uppercase;letter-spacing:.05em;background:var(--bg);border-top:1px solid var(--border);border-bottom:1px solid var(--border)}
+.col-hdr{display:grid;grid-template-columns:1fr 68px 80px;gap:6px;padding:5px 14px;background:var(--bg);border-bottom:1px solid var(--border)}
+.col-hdr span{font-size:10px;font-weight:700;color:var(--ink3);text-transform:uppercase;text-align:center}
+.col-hdr span:first-child{text-align:left}
+.item-row{display:grid;grid-template-columns:1fr 68px 80px;gap:6px;align-items:center;padding:8px 14px;border-bottom:1px solid var(--border);background:white}
+.item-name{font-size:13px;font-weight:600;color:var(--ink);line-height:1.3}
+.item-meta{font-size:11px;color:var(--ink3);margin-top:2px}
+.soh-col{display:flex;flex-direction:column;align-items:center;gap:2px}
+.soh-lbl{font-size:10px;color:var(--ink3)}
+.soh-input{width:64px;padding:6px 4px;font-size:15px;border:1.5px solid var(--border2);border-radius:var(--radius-sm);text-align:center;font-family:inherit;color:var(--ink);background:white}
+.soh-input:focus{outline:none;border-color:var(--brand)}
+.soh-input.pre{border-color:var(--green-border);background:var(--green-bg)}
+.last-soh-val{font-size:11px;color:var(--ink3);text-align:center}
+.new-pill{display:inline-block;font-size:9px;padding:1px 5px;border-radius:99px;background:var(--blue-bg);color:var(--blue);font-weight:700;margin-left:4px;vertical-align:middle}
+/* BUTTONS */
+.calc-btn{display:block;margin:14px 12px 0;width:calc(100% - 24px);padding:15px;background:var(--brand);color:white;border:none;border-radius:var(--radius);font-size:16px;font-weight:700;font-family:inherit;cursor:pointer}
+.calc-btn:active{opacity:.85}
+.copy-btn{display:block;margin:14px 12px 0;width:calc(100% - 24px);padding:14px;background:var(--green);color:white;border:none;border-radius:var(--radius);font-size:16px;font-weight:700;font-family:inherit;cursor:pointer}
+.copy-btn:active{opacity:.85}
+.back-btn{display:block;margin:10px 12px 0;width:calc(100% - 24px);padding:11px;background:white;color:var(--ink2);border:1.5px solid var(--border2);border-radius:var(--radius);font-size:14px;font-weight:600;font-family:inherit;cursor:pointer}
+.save-btn{display:block;margin:10px 12px 0;width:calc(100% - 24px);padding:14px;background:var(--blue);color:white;border:none;border-radius:var(--radius);font-size:16px;font-weight:700;font-family:inherit;cursor:pointer}
+.save-btn:active{opacity:.85}
+/* PROJECTION */
+.metrics{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--border);margin:12px;border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow)}
+.metric{background:white;padding:10px 12px}
+.met-lbl{font-size:11px;color:var(--ink3);margin-bottom:3px}
+.met-val{font-size:21px;font-weight:700;color:var(--ink)}
+.proj-col-hdr{display:grid;grid-template-columns:1fr auto;gap:8px;padding:5px 14px;background:var(--bg);border-bottom:1px solid var(--border)}
+.proj-col-hdr span{font-size:10px;font-weight:700;color:var(--ink3);text-transform:uppercase}
+/* QTY ADJUSTER */
+.qty-adjuster{display:flex;align-items:center;gap:0;flex-shrink:0}
+.qty-adj-btn{width:30px;height:30px;border:1.5px solid var(--border2);background:white;color:var(--ink);font-size:18px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;font-family:inherit;flex-shrink:0;line-height:1}
+.qty-adj-btn:first-child{border-radius:6px 0 0 6px}
+.qty-adj-btn:last-child{border-radius:0 6px 6px 0}
+.qty-adj-btn:active{background:var(--bg)}
+.qty-adj-val{min-width:38px;height:30px;border-top:1.5px solid var(--border2);border-bottom:1.5px solid var(--border2);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:var(--ink);background:white;padding:0 2px}
+.qty-adj-val.modified{color:var(--brand);background:#fff5f5}
+.qty-adj-unit{font-size:10px;color:var(--ink3);margin-left:5px;white-space:nowrap}
+.proj-row{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;padding:9px 14px;border-bottom:1px solid var(--border);background:white}
+.email-btn{display:block;margin:14px 12px 0;width:calc(100% - 24px);padding:15px;background:var(--brand);color:white;border:none;border-radius:var(--radius);font-size:16px;font-weight:700;font-family:inherit;cursor:pointer;text-decoration:none;text-align:center}
+.email-btn:active{opacity:.85}
+
+.proj-row.at-risk{background:var(--red-bg)}
+.proj-name{font-size:13px;font-weight:600;color:var(--ink);line-height:1.3}
+.proj-detail{font-size:11px;color:var(--ink3);margin-top:2px;line-height:1.4}
+.badge{display:inline-block;font-size:11px;font-weight:700;padding:3px 9px;border-radius:99px;white-space:nowrap}
+.b-order{background:var(--blue-bg);color:var(--blue);border:1px solid var(--blue-border)}
+.b-risk{background:var(--red-bg);color:var(--red);border:1px solid var(--red-border)}
+.b-tight{background:var(--amber-bg);color:var(--amber);border:1px solid var(--amber-border)}
+.b-ok{background:var(--green-bg);color:var(--green);border:1px solid var(--green-border)}
+.b-new{background:var(--blue-bg);color:var(--blue);border:1px solid var(--blue-border);font-size:10px}
+.trend-up{color:var(--red);font-weight:700}
+.trend-dn{color:var(--green);font-weight:700}
+/* HISTORY */
+.hist-item{padding:9px 14px;border-bottom:1px solid var(--border);background:white}
+.hist-name{font-size:13px;font-weight:600;color:var(--ink);margin-bottom:5px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.hist-chips{display:flex;flex-wrap:wrap;gap:4px}
+.hist-chip{font-size:11px;background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:2px 7px;color:var(--ink2)}
+.hist-chip.ord{border-color:var(--blue-border);background:var(--blue-bg);color:var(--blue)}
+.tb{font-size:10px;font-weight:700;padding:2px 6px;border-radius:99px}
+.tb-r{background:var(--red-bg);color:var(--red)}
+.tb-f{background:var(--green-bg);color:var(--green)}
+/* CAT FILTER */
+.cat-filter{display:flex;gap:6px;padding:8px 12px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.cat-filter::-webkit-scrollbar{display:none}
+.cat-btn{flex-shrink:0;font-size:12px;padding:5px 12px;border-radius:99px;border:1.5px solid var(--border2);background:white;color:var(--ink2);font-family:inherit;cursor:pointer;white-space:nowrap}
+.cat-btn.active{background:var(--brand);color:white;border-color:var(--brand)}
+/* ADD PRODUCT */
+.add-grid{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--border)}
+.add-cell{background:white;padding:10px 14px}
+.add-cell.full{grid-column:1/-1}
+.add-lbl{font-size:11px;color:var(--ink3);margin-bottom:4px}
+.add-input{width:100%;border:1.5px solid var(--border2);border-radius:var(--radius-sm);padding:7px 10px;font-size:14px;font-family:inherit;color:var(--ink);background:white}
+.add-input:focus{outline:none;border-color:var(--brand)}
+select.add-input{appearance:none;-webkit-appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23999' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;padding-right:28px}
+.add-btn{display:block;width:100%;padding:13px;background:var(--brand);color:white;border:none;font-size:15px;font-weight:700;font-family:inherit;cursor:pointer}
+.add-btn:active{opacity:.85}
+.custom-item-row{display:flex;align-items:center;justify-content:space-between;padding:9px 14px;background:white;border-bottom:1px solid var(--border)}
+.del-btn{background:var(--red-bg);color:var(--red);border:none;border-radius:var(--radius-sm);padding:4px 10px;font-size:12px;font-weight:700;font-family:inherit;cursor:pointer}
+/* PIN MODAL */
+.hidden{display:none!important}
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:200;display:flex;align-items:center;justify-content:center;padding:20px}
+.modal{background:white;border-radius:var(--radius);padding:24px;width:100%;max-width:320px;text-align:center}
+.modal h2{font-size:18px;font-weight:700;margin-bottom:8px}
+.modal p{font-size:14px;color:var(--ink2);margin-bottom:16px;line-height:1.5}
+.pin-input{width:100%;border:2px solid var(--border2);border-radius:var(--radius-sm);padding:12px;font-size:24px;text-align:center;letter-spacing:8px;font-family:inherit;color:var(--ink);margin-bottom:12px}
+.pin-input:focus{outline:none;border-color:var(--brand)}
+.modal-btn{width:100%;padding:13px;border:none;border-radius:var(--radius-sm);font-size:16px;font-weight:700;font-family:inherit;cursor:pointer;margin-bottom:8px}
+.modal-btn-primary{background:var(--brand);color:white}
+.modal-btn-secondary{background:var(--bg);color:var(--ink2)}
+.pin-error{color:var(--red);font-size:13px;margin-bottom:10px;display:none}
+/* SETUP PAGE */
+.setup-step{display:flex;gap:12px;padding:12px 14px;border-bottom:1px solid var(--border);background:white;align-items:flex-start}
+.step-num{width:26px;height:26px;border-radius:50%;background:var(--brand);color:white;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0;margin-top:1px}
+.step-text{font-size:13px;color:var(--ink);line-height:1.5}
+.step-text strong{display:block;font-weight:700;margin-bottom:2px}
+.step-text code{background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:1px 5px;font-size:12px;font-family:monospace;word-break:break-all}
+.url-input-wrap{margin:0 12px;display:flex;gap:8px}
+.url-input{flex:1;border:1.5px solid var(--border2);border-radius:var(--radius-sm);padding:9px 11px;font-size:13px;font-family:inherit;color:var(--ink)}
+.url-input:focus{outline:none;border-color:var(--brand)}
+.url-save-btn{padding:9px 14px;background:var(--brand);color:white;border:none;border-radius:var(--radius-sm);font-size:14px;font-weight:700;font-family:inherit;cursor:pointer;white-space:nowrap}
+.empty-state{padding:28px;text-align:center;color:var(--ink3);font-size:14px}
+/* LIVE ORDER VALUE TICKER */
+.live-ticker{background:linear-gradient(135deg,#1a1a2e 0%,#16213e 100%);margin:0 12px 10px;border-radius:var(--radius);padding:12px 16px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 4px 16px rgba(0,0,0,0.2)}
+.ticker-left{}
+.ticker-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:rgba(255,255,255,0.5);margin-bottom:2px}
+.ticker-value{font-size:28px;font-weight:800;color:white;font-variant-numeric:tabular-nums;transition:color .3s}
+.ticker-value.changed{color:#4ade80}
+.ticker-sub{font-size:11px;color:rgba(255,255,255,0.4);margin-top:1px}
+.ticker-right{text-align:right}
+.ticker-items{font-size:22px;font-weight:800;color:white}
+.ticker-items-lbl{font-size:10px;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:.06em}
+/* HEALTH SCORE */
+.health-bar{margin:0 12px 10px;background:white;border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden}
+.health-bar-title{font-size:12px;font-weight:700;color:var(--ink2);text-transform:uppercase;letter-spacing:.05em;padding:10px 14px 8px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
+.health-grade{font-size:22px;font-weight:900;padding:2px 10px;border-radius:6px}
+.health-cats{display:grid;grid-template-columns:repeat(5,1fr);gap:1px;background:var(--border)}
+.health-cat{background:white;padding:8px 6px;text-align:center}
+.health-cat-name{font-size:9px;color:var(--ink3);text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.health-cat-grade{font-size:16px;font-weight:900}
+.health-cat-bar{height:4px;border-radius:99px;background:var(--border);margin-top:4px;overflow:hidden}
+.health-cat-fill{height:100%;border-radius:99px}
+/* PREDICTED STOCKOUT ALERTS */
+.stockout-alerts{margin:0 12px 10px;background:white;border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden}
+.alert-row{display:flex;align-items:center;gap:10px;padding:8px 12px;border-bottom:1px solid var(--border)}
+.alert-row:last-child{border-bottom:none}
+.alert-icon{font-size:16px;flex-shrink:0}
+.alert-text{flex:1}
+.alert-name{font-size:13px;font-weight:600;color:var(--ink)}
+.alert-detail{font-size:11px;color:var(--ink3);margin-top:1px}
+.alert-badge{font-size:10px;font-weight:700;padding:3px 8px;border-radius:99px;white-space:nowrap;flex-shrink:0}
+/* SEASONAL COMPARISON */
+.season-row{display:grid;grid-template-columns:1fr 50px 50px 40px;gap:6px;align-items:center;padding:6px 12px;border-bottom:1px solid var(--border);font-size:12px}
+.season-row:last-child{border-bottom:none}
+.season-hdr{font-size:10px;font-weight:700;color:var(--ink3);text-transform:uppercase}
+/* QUICK COUNT MODE */
+.quickcount-overlay{position:fixed;inset:0;background:#1a1a2e;z-index:300;display:flex;flex-direction:column}
+.qc-hidden{display:none!important}
+.qc-topbar{padding:16px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid rgba(255,255,255,0.1)}
+.qc-title{color:white;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.06em}
+.qc-close{color:rgba(255,255,255,0.6);font-size:14px;font-weight:700;background:none;border:none;font-family:inherit;cursor:pointer;padding:6px 12px;border-radius:6px;background:rgba(255,255,255,0.1)}
+.qc-progress{height:3px;background:rgba(255,255,255,0.1)}
+.qc-progress-fill{height:100%;background:var(--brand);transition:width .3s}
+.qc-body{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;text-align:center}
+.qc-counter{color:rgba(255,255,255,0.4);font-size:13px;margin-bottom:8px;font-weight:600}
+.qc-item-name{color:white;font-size:26px;font-weight:800;line-height:1.2;margin-bottom:6px}
+.qc-item-meta{color:rgba(255,255,255,0.4);font-size:14px;margin-bottom:4px}
+.qc-last{color:rgba(255,255,255,0.35);font-size:13px;margin-bottom:6px}
+.qc-warn{color:#fbbf24;font-size:12px;font-weight:700;margin-bottom:16px;background:rgba(251,191,36,0.1);padding:5px 12px;border-radius:99px}
+.qc-current{font-size:72px;font-weight:900;color:white;line-height:1;margin:16px 0;font-variant-numeric:tabular-nums}
+.qc-unit{color:rgba(255,255,255,0.4);font-size:16px;margin-top:-8px;margin-bottom:20px}
+.qc-btns{display:flex;gap:16px;align-items:center;margin-bottom:20px}
+.qc-btn-minus{width:72px;height:72px;border-radius:50%;background:rgba(255,255,255,0.1);border:2px solid rgba(255,255,255,0.2);color:white;font-size:32px;font-weight:300;cursor:pointer;display:flex;align-items:center;justify-content:center;font-family:inherit}
+.qc-btn-plus{width:72px;height:72px;border-radius:50%;background:var(--brand);border:none;color:white;font-size:32px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;font-family:inherit;box-shadow:0 4px 16px rgba(230,57,70,0.4)}
+.qc-btn-next{width:100%;padding:16px;background:var(--brand);color:white;border:none;border-radius:var(--radius);font-size:17px;font-weight:700;font-family:inherit;cursor:pointer}
+.qc-btn-skip{background:none;border:none;color:rgba(255,255,255,0.35);font-size:13px;font-family:inherit;cursor:pointer;padding:10px;margin-top:4px}
+.qc-done{display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;padding:32px;text-align:center}
+.qc-done-emoji{font-size:64px;margin-bottom:16px}
+.qc-done-title{color:white;font-size:24px;font-weight:800;margin-bottom:8px}
+.qc-done-sub{color:rgba(255,255,255,0.5);font-size:14px;margin-bottom:32px;line-height:1.5}
+.qc-done-btn{padding:16px 40px;background:var(--brand);color:white;border:none;border-radius:var(--radius);font-size:17px;font-weight:700;font-family:inherit;cursor:pointer}
+/* SMART SORT TOGGLE */
+.sort-bar{display:flex;gap:6px;padding:8px 12px 4px;align-items:center}
+.sort-lbl{font-size:11px;color:var(--ink3);font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-right:4px}
+.sort-btn{font-size:12px;padding:4px 10px;border-radius:99px;border:1.5px solid var(--border2);background:white;color:var(--ink2);font-family:inherit;cursor:pointer}
+.sort-btn.active{background:var(--brand);color:white;border-color:var(--brand)}
+.quick-count-fab{position:fixed;bottom:80px;right:16px;z-index:50;width:52px;height:52px;border-radius:50%;background:var(--brand);color:white;border:none;box-shadow:0 4px 16px rgba(230,57,70,0.45);cursor:pointer;display:none;align-items:center;justify-content:center;font-size:22px}/* ANALYTICS DASHBOARD */
+.dash{margin:12px;margin-bottom:0}
+.dash-hero{background:linear-gradient(135deg,#e63946 0%,#c1121f 100%);border-radius:var(--radius);padding:16px;color:white;margin-bottom:10px;box-shadow:0 4px 16px rgba(230,57,70,0.3)}
+.dash-hero-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px}
+.dash-hero-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;opacity:.8}
+.dash-hero-date{font-size:11px;opacity:.7}
+.dash-kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.dash-kpi{background:rgba(255,255,255,0.15);border-radius:8px;padding:10px 8px;text-align:center}
+.dash-kpi-val{font-size:22px;font-weight:800;line-height:1}
+.dash-kpi-lbl{font-size:10px;opacity:.8;margin-top:3px;line-height:1.3}
+.dash-kpi-sub{font-size:10px;opacity:.65;margin-top:2px}
+.dash-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
+.dash-card{background:white;border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden}
+.dash-card-full{background:white;border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden;margin-bottom:10px}
+.dash-card-hdr{font-size:11px;font-weight:700;color:var(--ink2);text-transform:uppercase;letter-spacing:.05em;padding:10px 12px 6px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
+.dash-card-hdr span{font-size:10px;color:var(--ink3);font-weight:400;text-transform:none;letter-spacing:0}
+.dash-canvas-wrap{padding:8px 12px 10px;position:relative}
+.sparkrow{display:flex;align-items:center;gap:8px;padding:5px 12px;border-bottom:1px solid var(--border)}
+.sparkrow:last-child{border-bottom:none}
+.sparkrow-name{font-size:12px;color:var(--ink);flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sparkrow-val{font-size:12px;font-weight:700;color:var(--ink);width:28px;text-align:right;flex-shrink:0}
+.sparkrow-bar-wrap{width:70px;height:6px;background:var(--border);border-radius:99px;flex-shrink:0;overflow:hidden}
+.sparkrow-bar{height:100%;border-radius:99px;background:var(--brand)}
+.sparkrow-trend{font-size:11px;font-weight:700;width:18px;text-align:center;flex-shrink:0}
+.at-risk-row{display:flex;align-items:center;gap:8px;padding:7px 12px;border-bottom:1px solid var(--border)}
+.at-risk-row:last-child{border-bottom:none}
+.at-risk-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.at-risk-name{font-size:12px;color:var(--ink);flex:1}
+.at-risk-badge{font-size:10px;font-weight:700;padding:2px 7px;border-radius:99px;white-space:nowrap}
+.dash-toggle{display:flex;gap:0;margin:0 12px 10px;background:var(--border);border-radius:99px;padding:2px}
+.dash-toggle-btn{flex:1;padding:6px;font-size:12px;font-weight:600;border:none;background:none;border-radius:99px;font-family:inherit;color:var(--ink3);cursor:pointer}
+.dash-toggle-btn.active{background:white;color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,0.1)}
+/* INACTIVE TOGGLE */
+.toggle-sw{width:32px;height:18px;border-radius:99px;background:var(--border2);position:relative;transition:background .2s;flex-shrink:0;cursor:pointer;border:none;padding:0;display:inline-block;vertical-align:middle}
+.toggle-sw.on{background:var(--green)}
+.toggle-sw::after{content:'';position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;background:white;transition:left .2s;box-shadow:0 1px 3px rgba(0,0,0,0.2)}
+.toggle-sw.on::after{left:16px}
+.inactive-banner{font-size:12px;color:var(--amber);background:var(--amber-bg);border-radius:var(--radius-sm);padding:2px 8px;display:inline-block;margin-left:6px;font-weight:600;vertical-align:middle}
+.inactive-item{background:white;border-bottom:1px solid var(--border);padding:10px 14px}
+.inactive-name{font-size:13px;font-weight:600;color:var(--ink2);display:flex;align-items:center;flex-wrap:wrap;gap:6px;margin-bottom:3px}
+.inactive-meta{font-size:11px;color:var(--ink3);margin-bottom:6px}
+.reinstate-btn{font-size:12px;font-weight:700;padding:5px 14px;background:var(--green-bg);color:var(--green);border:1.5px solid var(--green-border);border-radius:var(--radius-sm);font-family:inherit;cursor:pointer}
+.inactive-chips{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}
+
+/* STOCKTAKE TAB */
+.st-hero{background:linear-gradient(135deg,#1a1a2e 0%,#16213e 100%);margin:12px;border-radius:var(--radius);padding:16px;color:white;box-shadow:0 4px 20px rgba(0,0,0,0.25)}
+.st-hero-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:rgba(255,255,255,0.5);margin-bottom:6px}
+.st-hero-value{font-size:36px;font-weight:900;color:white;line-height:1;font-variant-numeric:tabular-nums}
+.st-hero-buffer{font-size:13px;color:rgba(255,255,255,0.55);margin-top:4px}
+.st-hero-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}
+.st-hero-stat{background:rgba(255,255,255,0.08);border-radius:8px;padding:10px 12px}
+.st-hero-stat-val{font-size:18px;font-weight:800;color:white}
+.st-hero-stat-lbl{font-size:10px;color:rgba(255,255,255,0.45);margin-top:2px;text-transform:uppercase;letter-spacing:.05em}
+.st-card{background:white;border-radius:var(--radius);box-shadow:var(--shadow);margin:0 12px 12px;overflow:hidden}
+.st-card-hdr{font-size:12px;font-weight:700;color:var(--ink2);text-transform:uppercase;letter-spacing:.05em;padding:10px 14px 8px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
+.st-card-hdr span{font-size:10px;font-weight:400;color:var(--ink3);text-transform:none;letter-spacing:0}
+.st-chart-wrap{padding:12px 14px 8px}
+.st-legend{display:flex;flex-wrap:wrap;gap:10px;padding:4px 14px 12px}
+.st-leg-item{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--ink2)}
+.st-leg-dot{width:10px;height:10px;border-radius:2px;flex-shrink:0}
+.st-top-row{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--border)}
+.st-top-cell{background:white;padding:10px 12px}
+.st-top-rank{font-size:11px;color:var(--ink3);margin-bottom:2px}
+.st-top-name{font-size:13px;font-weight:600;color:var(--ink);line-height:1.3}
+.st-top-val{font-size:12px;color:var(--brand);font-weight:700;margin-top:2px}
+.st-bar-row{display:flex;align-items:center;gap:8px;padding:6px 14px;border-bottom:1px solid var(--border)}
+.st-bar-row:last-child{border-bottom:none}
+.st-bar-name{font-size:12px;color:var(--ink);flex:0 0 80px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.st-bar-track{flex:1;height:8px;background:var(--border);border-radius:99px;overflow:hidden}
+.st-bar-fill{height:100%;border-radius:99px;transition:width .3s}
+.st-bar-val{font-size:11px;font-weight:700;color:var(--ink2);flex:0 0 50px;text-align:right}
+.st-cycle-chip{display:inline-flex;align-items:center;gap:4px;font-size:11px;padding:4px 8px;border-radius:99px;margin:2px;border:1.5px solid var(--border2);background:white;cursor:pointer;font-family:inherit;color:var(--ink2)}
+.st-cycle-chip.active{background:var(--brand);color:white;border-color:var(--brand)}
+.st-snapshot-grid{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--border)}
+.st-snap-cell{background:white;padding:10px 12px}
+.st-snap-cat{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--ink3);margin-bottom:4px}
+.st-snap-val{font-size:18px;font-weight:800;color:var(--ink)}
+.st-snap-units{font-size:10px;color:var(--ink3);margin-top:1px}
+</style>
+</head>
+<body>
+<div class="app">
+
+<div class="topbar">
+  <div class="topbar-left">
+    <h1>☕ Sharetea Pakenham</h1>
+    <p id="syncLabel">Loading history...</p>
+  </div>
+  <div class="sync-status">
+    <div class="sync-dot loading" id="syncDot"></div>
+    <span id="syncText">Syncing</span>
+  </div>
+</div>
+
+<!-- PIN MODAL -->
+<div class="modal-overlay hidden" id="pinModal">
+  <div class="modal">
+    <h2>🔐 Enter PIN</h2>
+    <p id="pinPromptText">Enter the store PIN to save this order to history.</p>
+    <input type="password" inputmode="numeric" pattern="[0-9]*" maxlength="4" class="pin-input" id="pinInput" placeholder="••••"/>
+    <div class="pin-error" id="pinError">Incorrect PIN. Try again.</div>
+    <button class="modal-btn modal-btn-primary" onclick="submitPin()">Confirm</button>
+    <button class="modal-btn modal-btn-secondary" onclick="closePin()">Cancel</button>
+  </div>
+</div>
+
+<!-- QUICK COUNT OVERLAY -->
+<div class="quickcount-overlay qc-hidden" id="qcOverlay">
+  <div class="qc-topbar">
+    <div class="qc-title">📋 Stock Count</div>
+    <button class="qc-close" onclick="qcClose()">✕ Exit</button>
+  </div>
+  <div class="qc-progress"><div class="qc-progress-fill" id="qcProgress" style="width:0%"></div></div>
+  <div id="qcBody"></div>
+</div>
+
+<!-- PAGE: STOCK COUNT -->
+<div class="page active" id="page-stock">
+
+  <!-- LIVE ORDER VALUE TICKER -->
+  <div class="live-ticker" id="liveTicker" style="margin-top:12px">
+    <div class="ticker-left">
+      <div class="ticker-label">Est. order value</div>
+      <div class="ticker-value" id="tickerValue">$0</div>
+      <div class="ticker-sub" id="tickerSub">Enter stock counts to see estimate</div>
+    </div>
+    <div class="ticker-right">
+      <div class="ticker-items" id="tickerItems">0</div>
+      <div class="ticker-items-lbl">items needed</div>
+    </div>
+  </div>
+
+  <!-- STOCK HEALTH SCORE -->
+  <div class="health-bar" id="healthBar">
+    <div class="health-bar-title">
+      Stock health
+      <span class="health-grade" id="healthGrade">—</span>
+    </div>
+    <div class="health-cats" id="healthCats"></div>
+  </div>
+
+  <!-- PREDICTED STOCKOUT ALERTS -->
+  <div id="stockoutAlerts"></div>
+
+  <!-- ANALYTICS DASHBOARD -->
+  <div class="dash" id="dashPanel">
+    <!-- Hero KPIs -->
+    <div class="dash-hero">
+      <div class="dash-hero-top">
+        <div class="dash-hero-title">📊 Store analytics</div>
+        <div class="dash-hero-date" id="dashDate">—</div>
+      </div>
+      <div class="dash-kpis">
+        <div class="dash-kpi">
+          <div class="dash-kpi-val" id="kpiCycles">8</div>
+          <div class="dash-kpi-lbl">Order cycles</div>
+          <div class="dash-kpi-sub">Jan–May 2026</div>
+        </div>
+        <div class="dash-kpi">
+          <div class="dash-kpi-val" id="kpiRising">—</div>
+          <div class="dash-kpi-lbl">Rising items</div>
+          <div class="dash-kpi-sub">usage trending ↑</div>
+        </div>
+        <div class="dash-kpi">
+          <div class="dash-kpi-val" id="kpiAtRisk">—</div>
+          <div class="dash-kpi-lbl">Low usage</div>
+          <div class="dash-kpi-sub">items overstocked</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Order spend chart toggle -->
+    <div class="dash-toggle">
+      <button class="dash-toggle-btn active" id="tog-spend" onclick="dashToggle('spend')">Order spend / cycle</button>
+      <button class="dash-toggle-btn" id="tog-items" onclick="dashToggle('items')">Items ordered / cycle</button>
+    </div>
+
+    <!-- Spend / items bar chart -->
+    <div class="dash-card-full">
+      <div class="dash-card-hdr">Order history <span id="chartSubtitle">est. spend AUD</span></div>
+      <div class="dash-canvas-wrap" style="padding-bottom:6px">
+        <div id="spendChart" style="width:100%;"></div>
+        <div style="display:flex;justify-content:space-between;margin-top:4px" id="spendLabels"></div>
+      </div>
+    </div>
+
+    <!-- Top movers + dead stock stacked -->
+    <div class="dash-card-full">
+      <div class="dash-card-hdr">High usage <span>avg/cycle</span></div>
+      <div id="topMoversList"></div>
+    </div>
+    <div class="dash-card-full">
+      <div class="dash-card-hdr">Low usage <span>weeks of cover</span></div>
+      <div id="watchList"></div>
+    </div>
+
+    <!-- Category usage chart -->
+    <div class="dash-card-full">
+      <div class="dash-card-hdr">Usage by category <span>avg physical units/cycle</span></div>
+      <div class="dash-canvas-wrap">
+        <div id="catChart" style="width:100%;"></div>
+      </div>
+    </div>
+
+    <!-- Trend sparklines -->
+    <div class="dash-card-full" style="margin-bottom:10px">
+      <div class="dash-card-hdr">Usage trends <span>last 8 cycles</span></div>
+      <div id="trendSparklines"></div>
+    </div>
+  </div>
+  <!-- END DASHBOARD -->
+
+  <div class="card" style="margin-top:0">
+    <div class="card-title">Order parameters</div>
+    <div class="param-grid">
+      <div class="param-cell">
+        <div class="param-label">Order date</div>
+        <input type="date" class="param-input" id="orderDate"/>
+      </div>
+      <div class="param-cell">
+        <div class="param-label">Total cover needed</div>
+        <div style="font-size:20px;font-weight:700;color:var(--ink);padding-top:4px" id="totalCoverDisp">25 days</div>
+      </div>
+      <div class="param-cell">
+        <div class="param-label">Lead time (days)</div>
+        <input type="number" class="param-input" id="leadDays" value="11" min="1" max="30"/>
+      </div>
+      <div class="param-cell">
+        <div class="param-label">Order window (days)</div>
+        <input type="number" class="param-input" id="windowDays" value="14" min="7" max="30"/>
+      </div>
+    </div>
+  </div>
+  <div class="tl-wrap">
+    <div class="tl-bar">
+      <div class="tl-wait" id="tlW1" style="width:44%">11d wait</div>
+      <div class="tl-cover" id="tlC1">14d coverage</div>
+    </div>
+    <div class="tl-labels"><span>Order placed</span><span id="tlM1">+11d delivery</span><span>Next order</span></div>
+  </div>
+  <div class="notice notice-blue"><strong>Count physical units on shelf.</strong> For cups &amp; straws, count sleeves. The app converts to order boxes automatically.</div>
+  <div class="sort-bar">
+    <span class="sort-lbl">Sort:</span>
+    <button class="sort-btn active" id="sort-cat" onclick="setSort('cat')">Category</button>
+    <button class="sort-btn" id="sort-alpha" onclick="setSort('alpha')">A–Z</button>
+  </div>
+  <div class="cat-filter" id="cf-stock"></div>
+  <div class="col-hdr"><span>Item</span><span>SOH now</span><span>Last / Avg</span></div>
+  <div id="stockList"></div>
+  <button class="calc-btn" onclick="calcProjection()">Calculate order →</button>
+</div>
+
+<!-- QUICK COUNT FAB -->
+<button class="quick-count-fab" id="qcFab" onclick="qcStart()" title="Quick count mode">⚡</button>
+
+<!-- PAGE: PROJECTION -->
+<div class="page" id="page-proj">
+  <div class="tl-wrap" style="margin-top:12px">
+    <div class="tl-bar">
+      <div class="tl-wait" id="tlW2" style="width:44%">11d wait</div>
+      <div class="tl-cover" id="tlC2">14d coverage</div>
+    </div>
+    <div class="tl-labels"><span>Order placed</span><span>Stock arrives</span><span>Next order</span></div>
+  </div>
+  <div class="metrics" id="metricsBox"></div>
+  <div id="riskBanner"></div>
+  <div class="cat-filter" id="cf-proj"></div>
+  <div class="proj-col-hdr"><span>Item · usage detail</span><span style="text-align:right">Adjust qty</span></div>
+  <div id="projList"></div>
+  <div style="margin:10px 12px 0;font-size:12px;color:var(--ink3);text-align:center">Tap +/− to adjust quantities · changes are saved with your order history</div>
+  <a class="email-btn" id="emailBtn" href="#" onclick="return sendOrderEmail()">📧 Submit order to Sharetea</a>
+  <button class="copy-btn" id="copyBtn" onclick="copyOrder()">📋 Copy order list</button>
+  <button class="save-btn" onclick="promptPin('save')">💾 Save to history</button>
+  <button class="back-btn" onclick="goPage('stock')">← Adjust stock count</button>
+</div>
+
+<!-- PAGE: HISTORY -->
+<div class="page" id="page-hist">
+  <div class="notice notice-blue" style="margin-top:12px">History loaded from Google Sheets. SOH in physical units. Blue = qty ordered (in order units e.g. boxes).</div>
+  <div class="cat-filter" id="cf-hist"></div>
+  <div id="histList"></div>
+</div>
+
+<!-- PAGE: ADD PRODUCT -->
+<div class="page" id="page-add">
+  <div class="card" style="margin-top:12px">
+    <div class="card-title">➕ Add new product</div>
+    <div class="add-grid">
+      <div class="add-cell full">
+        <div class="add-lbl">Product name *</div>
+        <input type="text" class="add-input" id="np-name" placeholder="e.g. Taro Jelly"/>
+      </div>
+      <div class="add-cell">
+        <div class="add-lbl">Product code</div>
+        <input type="text" class="add-input" id="np-code" placeholder="e.g. 4025"/>
+      </div>
+      <div class="add-cell">
+        <div class="add-lbl">Category *</div>
+        <select class="add-input" id="np-cat">
+          <option value="">Select...</option>
+          <option>Tea Leaves</option>
+          <option>Flavor Powder</option>
+          <option>Syrup &amp; Jam</option>
+          <option>Toppings</option>
+          <option>Packaging</option>
+          <option>Merchandise</option>
+          <option>Other</option>
+        </select>
+      </div>
+      <div class="add-cell">
+        <div class="add-lbl">Physical unit *</div>
+        <input type="text" class="add-input" id="np-physunit" placeholder="btls / bags / sleeves"/>
+      </div>
+      <div class="add-cell">
+        <div class="add-lbl">Order unit (on form)</div>
+        <input type="text" class="add-input" id="np-orderunit" placeholder="e.g. box (4), BOX"/>
+      </div>
+      <div class="add-cell">
+        <div class="add-lbl">Units per order *</div>
+        <input type="number" class="add-input" id="np-mult" placeholder="e.g. 4" min="1"/>
+      </div>
+      <div class="add-cell">
+        <div class="add-lbl">Price per order ($) *</div>
+        <input type="number" class="add-input" id="np-price" placeholder="e.g. 80" min="0"/>
+      </div>
+      <div class="add-cell">
+        <div class="add-lbl">Current SOH</div>
+        <input type="number" class="add-input" id="np-soh" placeholder="0" min="0"/>
+      </div>
+    </div>
+    <button class="add-btn" onclick="addProduct()">Add to order list</button>
+  </div>
+  <div id="customItemsSection" style="display:none;margin:0 12px">
+    <div style="font-size:12px;font-weight:700;color:var(--ink2);text-transform:uppercase;letter-spacing:.04em;padding:12px 2px 6px">Added this session</div>
+    <div style="border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow)" id="customItemsList"></div>
+  </div>
+  <div class="notice notice-amber" style="margin-top:12px">
+    <strong>💡 Session only</strong>
+    Custom products added here are included in this session's projection. To make them permanent, let the store manager know to update the app.
+  </div>
+
+  <div style="margin:16px 12px 0;background:white;border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden">
+    <div style="font-size:12px;font-weight:700;color:var(--ink2);text-transform:uppercase;letter-spacing:.05em;padding:10px 14px 8px;border-bottom:1px solid var(--border)">⚙️ Google Sheets sync</div>
+    <div style="padding:12px 14px">
+      <div style="font-size:13px;color:var(--ink2);margin-bottom:10px;line-height:1.5">Paste your Apps Script URL to enable saving order history across all devices.</div>
+      <div style="display:flex;gap:8px">
+        <input type="url" class="add-input" id="scriptUrlInput" placeholder="https://script.google.com/macros/s/..." style="font-size:13px"/>
+        <button onclick="saveScriptUrl()" style="padding:8px 14px;background:var(--brand);color:white;border:none;border-radius:var(--radius-sm);font-size:14px;font-weight:700;font-family:inherit;cursor:pointer;white-space:nowrap">Save</button>
+      </div>
+      <div class="notice notice-green" id="urlSavedMsg" style="display:none;margin-top:10px;margin-bottom:0"><strong>✓ Connected!</strong> History will sync automatically.</div>
+      <div style="font-size:12px;color:var(--ink3);margin-top:8px" id="syncStatusLine">Not connected — history saved on this device only.</div>
+    </div>
+  </div>
+  <div style="height:16px"></div>
+</div>
+
+<!-- PAGE: STOCKTAKE -->
+<div class="page" id="page-stocktake">
+
+  <!-- Hero: current stock value -->
+  <div class="st-hero" id="stHero" style="margin-top:12px">
+    <div class="st-hero-label">📦 Total stock value</div>
+    <div class="st-hero-value" id="stTotalVal">—</div>
+    <div class="st-hero-buffer" id="stBufferVal">incl. 20% in-store buffer: —</div>
+    <div class="st-hero-grid">
+      <div class="st-hero-stat">
+        <div class="st-hero-stat-val" id="stItemCount">—</div>
+        <div class="st-hero-stat-lbl">Items tracked</div>
+      </div>
+      <div class="st-hero-stat">
+        <div class="st-hero-stat-val" id="stAvgVal">—</div>
+        <div class="st-hero-stat-lbl">Avg value/cycle</div>
+      </div>
+      <div class="st-hero-stat">
+        <div class="st-hero-stat-val" id="stHighVal">—</div>
+        <div class="st-hero-stat-lbl">Peak stock value</div>
+      </div>
+      <div class="st-hero-stat">
+        <div class="st-hero-stat-val" id="stLowVal">—</div>
+        <div class="st-hero-stat-lbl">Lowest stock value</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Total stock value over time -->
+  <div class="st-card">
+    <div class="st-card-hdr">Stock value over time <span>AUD · 20% buffer included</span></div>
+    <div class="st-chart-wrap">
+      <div id="stLineChart" style="width:100%"></div>
+    </div>
+  </div>
+
+  <!-- Stock value by category over time -->
+  <div class="st-card">
+    <div class="st-card-hdr">Value by category <span>AUD per cycle</span></div>
+    <div class="st-chart-wrap">
+      <div id="stCatChart" style="width:100%"></div>
+    </div>
+    <div class="st-legend" id="stCatLegend"></div>
+  </div>
+
+  <!-- Category snapshot: current cycle -->
+  <div class="st-card">
+    <div class="st-card-hdr">Current snapshot <span id="stSnapDate">latest cycle</span></div>
+    <div class="st-snapshot-grid" id="stSnapshot"></div>
+  </div>
+
+  <!-- Top value items -->
+  <div class="st-card" style="margin-bottom:12px">
+    <div class="st-card-hdr">Highest value items <span>current SOH × unit cost</span></div>
+    <div id="stTopItems"></div>
+  </div>
+
+</div>
+
+<!-- PAGE: INACTIVE -->
+<div class="page" id="page-inactive">
+  <div class="notice notice-amber" style="margin-top:12px">
+    <strong>Inactive products</strong> — hidden from ordering but retained with full history. Tap Reinstate to make active again.
+  </div>
+  <div class="cat-filter" id="cf-inactive"></div>
+  <div id="inactiveList"></div>
+</div>
+
+<!-- PAGE: SETUP -->
+<!-- PAGE: STOCKTAKE -->
+<div class="page" id="page-stocktake">
+
+  <!-- Hero: current stock value -->
+  <div class="st-hero" id="stHero" style="margin-top:12px">
+    <div class="st-hero-label">📦 Total stock value</div>
+    <div class="st-hero-value" id="stTotalVal">—</div>
+    <div class="st-hero-buffer" id="stBufferVal">incl. 20% in-store buffer: —</div>
+    <div class="st-hero-grid">
+      <div class="st-hero-stat">
+        <div class="st-hero-stat-val" id="stItemCount">—</div>
+        <div class="st-hero-stat-lbl">Items tracked</div>
+      </div>
+      <div class="st-hero-stat">
+        <div class="st-hero-stat-val" id="stAvgVal">—</div>
+        <div class="st-hero-stat-lbl">Avg value/cycle</div>
+      </div>
+      <div class="st-hero-stat">
+        <div class="st-hero-stat-val" id="stHighVal">—</div>
+        <div class="st-hero-stat-lbl">Peak stock value</div>
+      </div>
+      <div class="st-hero-stat">
+        <div class="st-hero-stat-val" id="stLowVal">—</div>
+        <div class="st-hero-stat-lbl">Lowest stock value</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Total stock value over time -->
+  <div class="st-card">
+    <div class="st-card-hdr">Stock value over time <span>AUD · 20% buffer included</span></div>
+    <div class="st-chart-wrap">
+      <div id="stLineChart" style="width:100%"></div>
+    </div>
+  </div>
+
+  <!-- Stock value by category over time -->
+  <div class="st-card">
+    <div class="st-card-hdr">Value by category <span>AUD per cycle</span></div>
+    <div class="st-chart-wrap">
+      <div id="stCatChart" style="width:100%"></div>
+    </div>
+    <div class="st-legend" id="stCatLegend"></div>
+  </div>
+
+  <!-- Category snapshot: current cycle -->
+  <div class="st-card">
+    <div class="st-card-hdr">Current snapshot <span id="stSnapDate">latest cycle</span></div>
+    <div class="st-snapshot-grid" id="stSnapshot"></div>
+  </div>
+
+  <!-- Top value items -->
+  <div class="st-card" style="margin-bottom:12px">
+    <div class="st-card-hdr">Highest value items <span>current SOH × unit cost</span></div>
+    <div id="stTopItems"></div>
+  </div>
+
+</div>
+
+<!-- PAGE: INACTIVE -->
+<div class="page" id="page-inactive">
+  <div class="notice notice-amber" style="margin-top:12px">
+    <strong>Inactive products</strong> — hidden from ordering but retained with full history. Tap Reinstate to make active again.
+  </div>
+  <div class="cat-filter" id="cf-inactive"></div>
+  <div id="inactiveList"></div>
+</div>
+
+<!-- PAGE: SETUP -->
+<div class="page" id="page-setup">
+  <div class="notice notice-amber" style="margin-top:12px">
+    <strong>⚙️ Google Sheets setup</strong>
+    Connect once to save order history across all devices and staff.
+  </div>
+  <div style="margin:0 12px;border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow)">
+    <div class="setup-step"><div class="step-num">1</div><div class="step-text"><strong>Create a Google Sheet</strong>Go to sheets.google.com and create a blank sheet named "Sharetea Pakenham Orders".</div></div>
+    <div class="setup-step"><div class="step-num">2</div><div class="step-text"><strong>Open Apps Script</strong>Click <strong>Extensions → Apps Script</strong>. Delete any existing code.</div></div>
+    <div class="setup-step"><div class="step-num">3</div><div class="step-text"><strong>Paste the script</strong>Paste the Apps Script file provided and click Save (💾).</div></div>
+    <div class="setup-step"><div class="step-num">4</div><div class="step-text"><strong>Deploy as web app</strong>Click <strong>Deploy → New Deployment</strong>. Type: Web App. Execute as: Me. Access: <strong>Anyone</strong>. Click Deploy and authorise.</div></div>
+    <div class="setup-step"><div class="step-num">5</div><div class="step-text"><strong>Copy the URL</strong>Copy the deployment URL starting with <code>https://script.google.com/macros/s/...</code></div></div>
+    <div class="setup-step" style="border-bottom:none"><div class="step-num">6</div><div class="step-text"><strong>Paste it below and save</strong></div></div>
+  </div>
+  <div class="url-input-wrap" style="margin-top:10px">
+    <input type="url" class="url-input" id="scriptUrlInput" placeholder="https://script.google.com/macros/s/..."/>
+    <button class="url-save-btn" onclick="saveScriptUrl()">Save</button>
+  </div>
+  <div class="notice notice-green" id="urlSavedMsg" style="display:none;margin-top:10px"><strong>✓ Connected!</strong> History will now sync automatically.</div>
+  <div style="height:20px"></div>
+</div>
+
+</div><!-- end .app -->
+
+<!-- BOTTOM NAV -->
+<div class="bottomnav">
+  <button class="navbtn active" id="nav-stock" onclick="goPage('stock')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><line x1="9" y1="12" x2="15" y2="12"/><line x1="9" y1="16" x2="13" y2="16"/></svg>
+    Stock
+  </button>
+  <button class="navbtn" id="nav-proj" onclick="goPage('proj')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5l7 7-7 7"/></svg>
+    Order
+  </button>
+  <button class="navbtn" id="nav-hist" onclick="goPage('hist')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+    History
+  </button>
+  <button class="navbtn" id="nav-stocktake" onclick="goPage('stocktake')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+    Stocktake
+  </button>
+  <button class="navbtn" id="nav-inactive" onclick="goPage('inactive')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
+    Inactive
+  </button>
+  <button class="navbtn" id="nav-add" onclick="goPage('add')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+    Add
+  </button>
+  <button class="navbtn" id="nav-setup" onclick="goPage('setup')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+    Settings
+  </button>
+
+</div>
+
+<script>
+const SHOP = 'Sharetea Pakenham';
+const PIN  = '1681';
+const CYCLES_LABELS = ['07/01/26','21/01/26','05/03/26','02/04/26','15/04/26','30/04/26','14/05/26','27/05/26','11/06/26'];
+
+// ── ITEM CATALOGUE ──────────────────────────────────────────────
+const BASE_HIST = {
+  // Tea Leaves
+  '1001':{name:'Black Tea',cat:'Tea Leaves',physUnit:'bags',orderUnit:'BOX',minForms:1,pricePerBox:600,mult:50,cycles:[[33,0],[22,1],[36,0],[22,0],[5,1],[45,0],[30,0],[19,1],[60,0]]},
+  '1002':{name:'Green Tea',cat:'Tea Leaves',physUnit:'bags',orderUnit:'BOX',minForms:1,pricePerBox:600,mult:50,cycles:[[23,1],[54,0],[50,0],[25,1],[53,0],[40,0],[24,1],[56,0],[40,0]]},
+  '1003':{name:'Oolong Tea',cat:'Tea Leaves',physUnit:'bags',orderUnit:'BOX',minForms:1,pricePerBox:600,mult:50,cycles:[[7,0],[4,1],[50,0],[44,0],[44,0],[40,0],[40,0],[36,0],[30,0]]},
+  // Flavor Powder
+  '2001':{name:'Chocolate Powder',cat:'Flavor Powder',physUnit:'bags',orderUnit:'BOX',minForms:1,pricePerBox:400,mult:20,cycles:[[20,0],[14,0],[23,0],[20,0],[14,0],[11,0],[8,0],[5,1],[22,0]]},
+  '2002':{name:'Matcha Powder',cat:'Flavor Powder',physUnit:'bags',orderUnit:'BOX',minForms:1,pricePerBox:400,mult:20,cycles:[[16,0],[13,0],[6,0],[20,0],[18,0],[15,0],[12,0],[10,0],[8,0]]},
+  '2005':{name:'Cheese Creamer Powder',cat:'Flavor Powder',physUnit:'bags',orderUnit:'BOX',minForms:1,pricePerBox:200,mult:10,cycles:[[5,0],[4,0],[10,0],[7,0],[5,0],[3,1],[10,0],[10,0],[8,0]]},
+  '2010':{name:'Thai Powder',cat:'Flavor Powder',physUnit:'bags',orderUnit:'BOX',minForms:1,pricePerBox:360,mult:20,cycles:[[17,0],[15,0],[12,0],[11,0],[10,0],[8,0],[7,0],[6,0],[5,0]]},
+  '2027':{name:'Coffee Mate (20kg)',cat:'Flavor Powder',physUnit:'bags',orderUnit:'bag',minForms:1,pricePerBox:160,mult:1,cycles:[[2,1],[2,1],[1,2],[3,0],[1,2],[2,1],[2,1],[2,0],[1,1]]},
+  '2033':{name:'Taro Powder',cat:'Flavor Powder',physUnit:'bags',orderUnit:'BOX',minForms:1,pricePerBox:360,mult:20,cycles:[[15,0],[9,1],[15,0],[7,1],[22,0],[16,0],[13,0],[9,0],[5,1]]},
+  // Syrup & Jam
+  '3003':{name:'Lemon Syrup',cat:'Syrup & Jam',physUnit:'btls',orderUnit:'box (6)',minForms:1,pricePerBox:120,mult:6,cycles:[[5,0],[4,0],[6,0],[4,0],[3,0],[2,0],[1,1],[6,0],[4,0]]},
+  '3004':{name:'Mango Jam',cat:'Syrup & Jam',physUnit:'btls',orderUnit:'box (4)',minForms:1,pricePerBox:208,mult:4,cycles:[[8,1],[6,2],[14,0],[13,0],[8,1],[7,2],[6,2],[13,0],[8,0]]},
+  '3005':{name:'Strawberry Jam',cat:'Syrup & Jam',physUnit:'btls',orderUnit:'box (4)',minForms:1,pricePerBox:180,mult:4,cycles:[[4,0],[3,0],[6,0],[5,0],[4,0],[0,1],[6,0],[5,0],[4,0]]},
+  '3006':{name:'Rose Syrup',cat:'Syrup & Jam',physUnit:'btls',orderUnit:'box (6)',minForms:1,pricePerBox:168,mult:6,cycles:[[8,0],[6,0],[7,0],[5,0],[4,0],[3,0],[2,1],[6,0],[6,0]]},
+  '3007':{name:'Honey Syrup',cat:'Syrup & Jam',physUnit:'btls',orderUnit:'box (3)',minForms:1,pricePerBox:60,mult:3,cycles:[[2,0],[2,0],[1,0],[0,0],[0,0],[0,0],[0,0],[0,1],[0,0]]},
+  '3008':{name:'Passionfruit Jam',cat:'Syrup & Jam',physUnit:'btls',orderUnit:'box (6)',minForms:1,pricePerBox:156,mult:6,cycles:[[4,1],[7,0],[5,1],[8,0],[3,1],[7,0],[2,2],[11,0],[7,0]]},
+  '3010':{name:'Lychee Syrup',cat:'Syrup & Jam',physUnit:'btls',orderUnit:'box (6)',minForms:1,pricePerBox:120,mult:6,cycles:[[6,1],[8,1],[4,2],[10,0],[12,0],[9,0],[5,1],[9,0],[4,1]]},
+  '3011':{name:'Honeydew Syrup',cat:'Syrup & Jam',physUnit:'btls',orderUnit:'box (6)',minForms:1,pricePerBox:120,mult:6,cycles:[[1,1],[6,0],[3,0],[6,0],[5,0],[3,0],[2,0],[1,1],[6,0]]},
+  '3012':{name:'Peach Syrup',cat:'Syrup & Jam',physUnit:'btls',orderUnit:'box (6)',minForms:1,pricePerBox:120,mult:6,cycles:[[2,1],[6,0],[5,0],[8,0],[7,0],[4,1],[9,0],[6,0],[4,0]]},
+  '3013':{name:'Pineapple Syrup',cat:'Syrup & Jam',physUnit:'btls',orderUnit:'box (6)',minForms:1,pricePerBox:132,mult:6,cycles:[[null,0],[null,0],[null,0],[null,0],[null,0],[null,0],[null,0],[null,0],[0,1]]},
+  '3017':{name:'Brown Sugar Syrup',cat:'Syrup & Jam',physUnit:'btls',orderUnit:'box (4)',minForms:1,pricePerBox:160,mult:4,cycles:[[6,1],[7,0],[9,0],[2,2],[7,0],[4,1],[5,1],[6,0],[2,1]]},
+  '3020':{name:'Watermelon Syrup',cat:'Syrup & Jam',physUnit:'btls',orderUnit:'box (6)',minForms:1,pricePerBox:132,mult:6,cycles:[[4,0],[2,1],[6,0],[6,0],[5,0],[4,0],[2,1],[7,0],[5,0]]},
+  '3021':{name:'Blueberry Jam',cat:'Syrup & Jam',physUnit:'btls',orderUnit:'box (4)',minForms:1,pricePerBox:220,mult:4,cycles:[[null,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[null,0]]},
+  '3022':{name:'Guava Syrup',cat:'Syrup & Jam',physUnit:'btls',orderUnit:'box (6)',minForms:1,pricePerBox:132,mult:6,cycles:[[4,0],[4,0],[4,0],[4,0],[4,0],[4,0],[3,0],[2,0],[2,0]]},
+  '3023':{name:'Grape Jelly',cat:'Syrup & Jam',physUnit:'btls',orderUnit:'box (4)',minForms:1,pricePerBox:80,mult:4,cycles:[[null,0],[null,0],[null,0],[null,0],[null,0],[null,0],[null,0],[null,0],[null,0]]},
+  '3032':{name:'Fructose',cat:'Syrup & Jam',physUnit:'btls',orderUnit:'box (4)',minForms:1,pricePerBox:72,mult:4,cycles:[[7,0],[0,2],[4,1],[7,1],[6,1],[6,1],[5,1],[4,1],[4,1]]},
+  // Toppings
+  '4001':{name:'Herb Jelly Syrup',cat:'Toppings',physUnit:'btls',orderUnit:'box (6)',minForms:1,pricePerBox:120,mult:6,cycles:[[null,0],[null,0],[0,0],[0,0],[0,0],[0,0],[0,0],[0,0],[null,0]]},
+  '4003':{name:'Honey Aloe Vera',cat:'Toppings',physUnit:'btls',orderUnit:'box (6)',minForms:1,pricePerBox:138,mult:6,cycles:[[7,0],[6,0],[2,0],[5,0],[4,0],[2,1],[6,0],[6,0],[5,0]]},
+  '4004':{name:'Lychee Jelly',cat:'Toppings',physUnit:'btls',orderUnit:'box (4)',minForms:1,pricePerBox:120,mult:4,cycles:[[5,0],[1,1],[4,1],[11,0],[5,1],[5,1],[6,0],[3,1],[4,1]]},
+  '4006':{name:'Tapioca Pearl',cat:'Toppings',physUnit:'bags',orderUnit:'BOX (6)',minForms:1,pricePerBox:78,mult:6,cycles:[[18,1],[10,4],[22,2],[32,1],[21,2],[18,3],[12,4],[26,2],[26,1]]},
+  '4008':{name:'Mango Jelly',cat:'Toppings',physUnit:'btls',orderUnit:'box (4)',minForms:1,pricePerBox:80,mult:4,cycles:[[3,0],[2,0],[3,0],[1,1],[4,0],[0,1],[4,0],[5,0],[4,0]]},
+  '4009':{name:'Rainbow Jelly',cat:'Toppings',physUnit:'btls',orderUnit:'box (4)',minForms:1,pricePerBox:80,mult:4,cycles:[[8,0],[4,1],[4,1],[12,0],[8,0],[5,1],[5,1],[6,0],[5,1]]},
+  '4010':{name:'White Pearl (Jelly Ball)',cat:'Toppings',physUnit:'bags',orderUnit:'box (6)',minForms:1,pricePerBox:108,mult:6,cycles:[[5,0],[2,1],[7,0],[3,1],[7,0],[3,1],[8,0],[6,0],[4,1]]},
+  '4011':{name:'Strawberry Popping Pearl',cat:'Toppings',physUnit:'btls',orderUnit:'box (4)',minForms:1,pricePerBox:100,mult:4,cycles:[[3,1],[2,2],[4,2],[6,1],[5,1],[3,2],[5,1],[6,1],[4,2]]},
+  '4013':{name:'Mango Popping Pearl',cat:'Toppings',physUnit:'btls',orderUnit:'box (4)',minForms:1,pricePerBox:100,mult:4,cycles:[[8,1],[2,3],[8,2],[8,2],[9,1],[6,2],[5,3],[11,1],[8,2]]},
+  '4014':{name:'Lychee Popping Pearl',cat:'Toppings',physUnit:'btls',orderUnit:'box (4)',minForms:1,pricePerBox:100,mult:4,cycles:[[4,1],[5,0],[3,1],[8,1],[12,0],[8,1],[9,0],[7,0],[5,0]]},
+  '4016':{name:'Passionfruit Popping Pearl',cat:'Toppings',physUnit:'btls',orderUnit:'box (4)',minForms:1,pricePerBox:100,mult:4,cycles:[[3,1],[2,2],[3,2],[8,0],[7,0],[5,1],[5,1],[4,1],[2,2]]},
+  '4018':{name:'Purple Rice',cat:'Toppings',physUnit:'cans',orderUnit:'BOX (12)',minForms:1,pricePerBox:108,mult:12,cycles:[[7,0],[5,0],[8,0],[4,0],[2,1],[12,0],[8,0],[5,0],[0,1]]},
+  '4019':{name:'Raspberry Popping Pearl',cat:'Toppings',physUnit:'btls',orderUnit:'box (4)',minForms:1,pricePerBox:100,mult:4,cycles:[[0,1],[2,1],[4,0],[4,1],[7,0],[5,0],[3,1],[7,0],[3,0]]},
+  '4022':{name:'Cherry Blossom Pearl',cat:'Toppings',physUnit:'bags',orderUnit:'box (6)',minForms:1,pricePerBox:108,mult:6,cycles:[[6,0],[3,1],[1,1],[10,0],[6,0],[5,0],[2,1],[7,0],[4,1]]},
+  '4023':{name:'Jelly Pearl Brown Sugar',cat:'Toppings',physUnit:'bags',orderUnit:'box (6)',minForms:1,pricePerBox:108,mult:6,cycles:[[5,0],[2,1],[6,0],[5,1],[6,0],[3,1],[5,1],[7,0],[4,1]]},
+  '4024':{name:'Coffee Jelly',cat:'Toppings',physUnit:'btls',orderUnit:'box (4)',minForms:1,pricePerBox:80,mult:4,cycles:[[null,0],[null,0],[null,0],[null,0],[null,0],[null,0],[null,0],[null,0],[null,0]]},
+  '4026':{name:'Tapioca Mini Pearl',cat:'Toppings',physUnit:'bags',orderUnit:'box (6)',minForms:1,pricePerBox:57,mult:6,cycles:[[3,0],[1,1],[7,0],[6,0],[4,0],[3,0],[1,0],[0,0],[0,0]]},
+  // Packaging
+  '5001':{name:'Q-500cc PP Cup',cat:'Packaging',physUnit:'sleeves',orderUnit:'BOX',minForms:1,pricePerBox:150,mult:20,cycles:[[34,1],[48,0],[30,1],[33,1],[43,0],[34,0],[20,1],[32,0],[22,0]]},
+  '5002':{name:'700cc PP Cup',cat:'Packaging',physUnit:'sleeves',orderUnit:'BOX',minForms:1,pricePerBox:175,mult:20,cycles:[[57,1],[50,1],[59,1],[52,0],[43,1],[35,2],[48,1],[43,1],[38,1]]},
+  '5004':{name:'Paper Sealing Tape',cat:'Packaging',physUnit:'rolls',orderUnit:'roll',minForms:1,pricePerBox:75,mult:1,cycles:[[2,0],[1,1],[1,2],[3,1],[3,0],[2,1],[2,0],[1,1],[2,1]]},
+  '5008':{name:'1-Cup Bag',cat:'Packaging',physUnit:'bags',orderUnit:'bag',minForms:1,pricePerBox:22,mult:1,cycles:[[6,0],[2,0],[6,0],[8,0],[1,1],[6,0],[4,0],[4,0],[2,1]]},
+  '5009':{name:'2-Cup Bag',cat:'Packaging',physUnit:'bags',orderUnit:'bag',minForms:1,pricePerBox:22,mult:1,cycles:[[0,1],[1,1],[0,1],[4,0],[0,2],[8,1],[8,0],[4,1],[4,0]]},
+  '5010':{name:'4-Cup Bag',cat:'Packaging',physUnit:'bags',orderUnit:'bag',minForms:1,pricePerBox:22,mult:1,cycles:[[0,0],[null,0],[0,0],[0,0],[0,0],[0,0],[0,0],[null,0],[0,0]]},
+  '5011':{name:'Filter Paper',cat:'Packaging',physUnit:'boxes',orderUnit:'box',minForms:1,pricePerBox:55,mult:1,cycles:[[1,0],[1,1],[1,0],[1,0],[8,0],[null,0],[0,1],[1,0],[1,0]]},
+  '5012':{name:'500cc Paper Cup',cat:'Packaging',physUnit:'sleeves',orderUnit:'BOX',minForms:1,pricePerBox:160,mult:20,cycles:[[16,0],[17,0],[16,0],[16,0],[16,0],[15,0],[15,0],[13,0],[12,0]]},
+  '5013':{name:'Paper Cup LID',cat:'Packaging',physUnit:'sleeves',orderUnit:'BOX',minForms:1,pricePerBox:70,mult:20,cycles:[[2,0],[20,0],[19,0],[18,0],[18,0],[15,0],[6,0],[16,0],[15,0]]},
+  '5019':{name:'Large Paper Straw',cat:'Packaging',physUnit:'sleeves',orderUnit:'BOX',minForms:1,pricePerBox:150,mult:20,cycles:[[35,1],[31,1],[40,1],[34,1],[37,1],[35,1],[40,1],[40,1],[44,0]]},
+  '5020':{name:'Small Paper Straw',cat:'Packaging',physUnit:'sleeves',orderUnit:'BOX',minForms:1,pricePerBox:150,mult:20,cycles:[[16,0],[14,0],[6,0],[25,0],[25,0],[20,0],[20,0],[18,0],[16,0]]},
+  '5021':{name:'Dome LID',cat:'Packaging',physUnit:'sleeves',orderUnit:'BOX',minForms:1,pricePerBox:54,mult:20,cycles:[[3,0],[3,0],[4,0],[4,0],[4,0],[null,0],[6,0],[0,0],[null,0]]},
+  '5022':{name:'Cheese Cream Top LID',cat:'Packaging',physUnit:'sleeves',orderUnit:'BOX',minForms:1,pricePerBox:65,mult:20,cycles:[[15,0],[null,0],[15,0],[0,0],[12,0],[null,0],[null,0],[8,0],[8,0]]},
+  '5031':{name:'360cc PP Cup (Kids)',cat:'Packaging',physUnit:'sleeves',orderUnit:'BOX',minForms:1,pricePerBox:130,mult:20,cycles:[[14,0],[12,0],[25,0],[21,0],[20,0],[16,0],[14,0],[12,0],[9,0]]},
+  '5032':{name:'Large Paper Straw (Kids)',cat:'Packaging',physUnit:'sleeves',orderUnit:'BOX',minForms:1,pricePerBox:120,mult:20,cycles:[[18,0],[null,0],[10,0],[12,0],[10,0],[9,0],[null,0],[6,0],[4,0]]},
+  '5033':{name:'Small Paper Straw (Kids)',cat:'Packaging',physUnit:'sleeves',orderUnit:'BOX',minForms:1,pricePerBox:120,mult:20,cycles:[[null,0],[null,0],[null,0],[null,0],[null,0],[null,0],[null,0],[null,0],[null,0]]},
+  // Merchandise
+  '6012':{name:'Keyring Plushies',cat:'Merchandise',physUnit:'units',orderUnit:'box (20)',minForms:1,pricePerBox:50,mult:20,cycles:[[null,0],[null,0],[null,1],[null,0],[null,2],[null,0],[null,0],[null,2],[40,0]]},
+};
+
+// ── STATE ───────────────────────────────────────────────────────
+let liveHist    = JSON.parse(JSON.stringify(BASE_HIST)); // deep copy, updated from Sheets
+let customProds = {};
+let newSOH      = {};
+let activeCat   = {stock:'All', proj:'All', hist:'All', inactive:'All'};
+let projData    = [];
+let orderAdjustments = {}; // code -> adjusted orderForms override
+let inactiveItems = new Set(JSON.parse(localStorage.getItem('inactiveItems') || '[]'));
+let pinCallback = null;
+let scriptUrl   = localStorage.getItem('sheetScriptUrl') || 'https://script.google.com/macros/s/AKfycbwpMvX5LcE_s0kz_fLcxwZEl9NJHz71OSaTyx_dcQwzurk72LMyfwVHIZk601ulCr8O/exec';
+
+// init SOH from last known cycle
+function initSOH() {
+  Object.keys(allItems()).forEach(code => {
+    const it = allItems()[code];
+    const last = it.cycles && it.cycles[it.cycles.length-1];
+    newSOH[code] = (last && last[0] !== null) ? last[0] : 0;
+  });
+}
+
+function allItems() {
+  const all = Object.assign({}, liveHist, customProds);
+  // Return only active items
+  return Object.fromEntries(Object.entries(all).filter(([code]) => !inactiveItems.has(code)));
+}
+function allItemsIncInactive() {
+  return Object.assign({}, liveHist, customProds);
+}
+function allCats()  {
+  const BASE_CATS = ['Tea Leaves','Flavor Powder','Syrup & Jam','Toppings','Packaging','Merchandise'];
+  const extra = Object.values(customProds).map(i => i.cat).filter(c => !BASE_CATS.includes(c));
+  return ['All', ...BASE_CATS, ...[...new Set(extra)]];
+}
+
+// ── GOOGLE SHEETS SYNC ──────────────────────────────────────────
+function setSyncStatus(state, text) {
+  const dot  = document.getElementById('syncDot');
+  const txt  = document.getElementById('syncText');
+  const lbl  = document.getElementById('syncLabel');
+  dot.className = 'sync-dot' + (state === 'loading' ? ' loading' : state === 'error' ? ' error' : '');
+  txt.textContent = text;
+  if (state === 'ok')   lbl.textContent = 'History loaded from Google Sheets';
+  if (state === 'error') lbl.textContent = 'Using built-in history (offline)';
+  if (state === 'loading') lbl.textContent = 'Loading history...';
+  if (state === 'nosync') lbl.textContent = 'Setup Google Sheets to save history';
+  const sl = document.getElementById('syncStatusLine');
+  if (sl) {
+    if (state === 'ok') sl.textContent = '✓ Connected to Google Sheets.';
+    else if (state === 'error') sl.textContent = 'Could not reach Google Sheets — using built-in history.';
+    else if (state === 'nosync') sl.textContent = 'Not connected — history saved on this device only.';
+  }
+}
+
+async function loadFromSheets() {
+  if (!scriptUrl) {
+    setSyncStatus('nosync', 'Not connected');
+    initSOH(); renderStock(); renderHist();
+    updateLiveTicker(); calcHealthScore(); renderStockoutAlerts();
+    requestAnimationFrame(renderDashboard);
+    return;
+  }
+  setSyncStatus('loading', 'Syncing');
+  // Always render with built-in data first
+  initSOH(); renderStock(); renderHist();
+  updateLiveTicker(); calcHealthScore(); renderStockoutAlerts();
+  requestAnimationFrame(renderDashboard);
+  // Load from sheets via JSONP (bypasses CORS)
+  try {
+    const data = await jsonpFetch(scriptUrl + '?action=getHistory');
+    if (data && data.cycles) {
+      // Only update items where Sheets has MORE cycles than built-in
+      // This prevents old/stale sheet data overwriting correct built-in data
+      Object.keys(data.cycles).forEach(code => {
+        if (liveHist[code]) {
+          const sheetCycles = data.cycles[code];
+          const builtInCycles = liveHist[code].cycles;
+          if (sheetCycles.length >= builtInCycles.length) {
+            liveHist[code].cycles = sheetCycles;
+          }
+        }
+      });
+      setSyncStatus('ok', 'Synced');
+      initSOH(); renderStock(); renderHist();
+      updateLiveTicker(); calcHealthScore(); renderStockoutAlerts();
+      requestAnimationFrame(renderDashboard);
+    } else {
+      setSyncStatus('error', 'Offline — using built-in history');
+    }
+  } catch(e) {
+    setSyncStatus('error', 'Offline — using built-in history');
+  }
+}
+
+function jsonpFetch(url) {
+  return new Promise((resolve, reject) => {
+    const cbName = 'cb_' + Date.now();
+    const script = document.createElement('script');
+    const timeout = setTimeout(() => {
+      cleanup(); reject(new Error('timeout'));
+    }, 10000);
+    function cleanup() {
+      clearTimeout(timeout);
+      delete window[cbName];
+      if (script.parentNode) script.parentNode.removeChild(script);
+    }
+    window[cbName] = (data) => { cleanup(); resolve(data); };
+    script.src = url + '&callback=' + cbName;
+    script.onerror = () => { cleanup(); reject(new Error('script error')); };
+    document.head.appendChild(script);
+  });
+}
+
+async function saveToSheets(orderDate, cycleData) {
+  // cycleData: { code: [soh_physical, order_forms], ... }
+  if (!scriptUrl) {
+    alert('Google Sheets not connected yet. Go to Setup tab to connect.');
+    return false;
+  }
+  setSyncStatus('loading', 'Saving...');
+  try {
+    const payload = { action:'saveOrder', date: orderDate, shop: SHOP, cycles: cycleData };
+    await fetch(scriptUrl, {
+      method: 'POST',
+      mode: 'no-cors',
+      body: JSON.stringify(payload)
+    });
+    // update local liveHist with new cycle
+    Object.keys(cycleData).forEach(code => {
+      if (liveHist[code]) {
+        liveHist[code].cycles.push(cycleData[code]);
+        // keep last 20 cycles max
+        if (liveHist[code].cycles.length > 20) liveHist[code].cycles.shift();
+      }
+    });
+    setSyncStatus('ok', 'Saved ✓');
+    renderHist();
+    return true;
+  } catch(e) {
+    setSyncStatus('error', 'Save failed');
+    alert('Could not save to Google Sheets. Check your connection and try again.');
+    return false;
+  }
+}
+
+function saveScriptUrl() {
+  const val = document.getElementById('scriptUrlInput').value.trim();
+  if (!val.startsWith('https://script.google.com')) {
+    alert('That doesn\'t look like a valid Apps Script URL. It should start with https://script.google.com/macros/s/');
+    return;
+  }
+  scriptUrl = val;
+  localStorage.setItem('sheetScriptUrl', val);
+  document.getElementById('urlSavedMsg').style.display = 'block';
+  loadFromSheets();
+}
+
+// ── PIN ──────────────────────────────────────────────────────────
+function promptPin(action) {
+  pinCallback = action;
+  document.getElementById('pinInput').value = '';
+  document.getElementById('pinError').style.display = 'none';
+  document.getElementById('pinModal').classList.remove('hidden');
+  setTimeout(() => document.getElementById('pinInput').focus(), 100);
+}
+function closePin() {
+  document.getElementById('pinModal').classList.add('hidden');
+  pinCallback = null;
+}
+function submitPin() {
+  const entered = document.getElementById('pinInput').value.trim();
+  if (entered !== PIN) {
+    document.getElementById('pinError').style.display = 'block';
+    document.getElementById('pinInput').value = '';
+    return;
+  }
+  closePin();
+  if (pinCallback === 'save') executeSave();
+}
+document.getElementById('pinInput').addEventListener('keydown', e => { if(e.key==='Enter') submitPin(); });
+
+// ── SAVE ORDER ───────────────────────────────────────────────────
+async function executeSave() {
+  const date = document.getElementById('orderDate').value || new Date().toISOString().slice(0,10);
+  // build cycleData from current projData
+  const cycleData = {};
+  projData.forEach(it => {
+    const adjQty = orderAdjustments[it.code] != null ? orderAdjustments[it.code] : it.orderForms;
+    cycleData[it.code] = [it.soh, adjQty];
+  });
+  const ok = await saveToSheets(date, cycleData);
+  if (ok) {
+    const btn = document.getElementById('copyBtn').nextElementSibling; // save btn
+    btn.textContent = '✓ Saved to Google Sheets!';
+    setTimeout(() => btn.textContent = '💾 Save to history', 3000);
+  }
+}
+
+// ── NAVIGATION ───────────────────────────────────────────────────
+function goPage(pg) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.navbtn').forEach(b => b.classList.remove('active'));
+  document.getElementById('page-'+pg).classList.add('active');
+  document.getElementById('nav-'+pg).classList.add('active');
+  window.scrollTo(0,0);
+  // Show FAB only on stock page
+  const fab = document.getElementById('qcFab');
+  if (fab) fab.style.display = pg === 'stock' ? 'flex' : 'none';
+  if (pg === 'add' && scriptUrl) {
+    const inp = document.getElementById('scriptUrlInput');
+    if (inp) inp.value = scriptUrl;
+  }
+  if (pg === 'setup' && scriptUrl) {
+    const inp = document.getElementById('scriptUrlInput');
+    if (inp) inp.value = scriptUrl;
+  }
+  if (pg === 'stock') requestAnimationFrame(() => { renderDashboard(); updateLiveTicker(); calcHealthScore(); renderStockoutAlerts(); });
+  if (pg === 'inactive') { buildCF('cf-inactive','inactive'); renderInactive(); }
+  if (pg === 'stocktake') requestAnimationFrame(renderStocktake);
+}
+
+// ── TIMELINE ─────────────────────────────────────────────────────
+function getP() { return { lead: +document.getElementById('leadDays').value||11, win: +document.getElementById('windowDays').value||14 }; }
+function updateTimeline() {
+  const {lead,win} = getP(); const total = lead+win;
+  const pct = Math.round(lead/total*100)+'%';
+  ['1','2'].forEach(s => {
+    const w=document.getElementById('tlW'+s), c=document.getElementById('tlC'+s), m=document.getElementById('tlM'+s);
+    if(w){w.style.width=pct; w.textContent=lead+'d wait';}
+    if(c) c.textContent=win+'d coverage';
+    if(m) m.textContent='+'+lead+'d delivery';
+  });
+  const td = document.getElementById('totalCoverDisp');
+  if(td) td.textContent = total+' days';
+}
+
+// ── USAGE CALCS ──────────────────────────────────────────────────
+function avgUsage(code) {
+  const it = allItems()[code]; if(!it||!it.cycles) return 0;
+  let uses=[], prev=null;
+  it.cycles.forEach(([soh,ord]) => {
+    if(prev!==null && soh!==null && prev[0]!==null)
+      uses.push(Math.max(0, prev[0] + prev[1]*it.mult - soh));
+    prev=[soh,ord];
+  });
+  return uses.length ? uses.reduce((a,b)=>a+b,0)/uses.length : 0;
+}
+function trendDir(code) {
+  const it = allItems()[code]; if(!it||!it.cycles) return 0;
+  let uses=[], prev=null;
+  it.cycles.forEach(([soh,ord]) => {
+    if(prev!==null && soh!==null && prev[0]!==null)
+      uses.push(Math.max(0, prev[0]+prev[1]*it.mult-soh));
+    prev=[soh,ord];
+  });
+  if(uses.length<3) return 0;
+  const half=Math.floor(uses.length/2);
+  const early=uses.slice(0,half).reduce((a,b)=>a+b,0)/half;
+  const late=uses.slice(-half).reduce((a,b)=>a+b,0)/half;
+  return late>early*1.2 ? 1 : late<early*0.8 ? -1 : 0;
+}
+
+// ── CAT FILTERS ──────────────────────────────────────────────────
+function buildCF(id, pg) {
+  const el = document.getElementById(id); if(!el) return; el.innerHTML='';
+  allCats().forEach(c => {
+    const b = document.createElement('button');
+    b.className = 'cat-btn'+(c===activeCat[pg]?' active':'');
+    b.textContent = c;
+    b.onclick = () => { activeCat[pg]=c; buildCF(id,pg);
+      if(pg==='stock') renderStock();
+      else if(pg==='proj') renderProj();
+      else renderHist();
+    };
+    el.appendChild(b);
+  });
+}
+
+// ── STOCK LIST ───────────────────────────────────────────────────
+function renderStock() {
+  const items = sortedItems();
+  let html='', lastCat='';
+  items.forEach(([code,it]) => {
+    if (currentSort === 'cat' || currentSort === 'priority') {
+      if (it.cat !== lastCat) { html += `<div class="section-hdr">${it.cat}</div>`; lastCat = it.cat; }
+    }
+    const avg = avgUsage(code);
+    const cycles = it.cycles || [];
+    const lastEntry = cycles.filter(([s]) => s !== null).pop();
+    const lastSoh = lastEntry ? lastEntry[0] : '—';
+    const v = newSOH[code] != null ? newSOH[code] : '';
+    const isNew = cycles.every(([s]) => s === null);
+    let priorityDot = '';
+    html += `<div class="item-row">
+      <div>
+        <div class="item-name" style="display:flex;align-items:center">${it.name}${isNew?'<span class="new-pill" style="margin-left:5px">new</span>':''}${priorityDot}</div>
+        <div class="item-meta">${code} · ${it.mult>1?'1 '+it.orderUnit+' = '+it.mult+' '+it.physUnit:'order: '+it.orderUnit}</div>
+      </div>
+      <div class="soh-col">
+        <div class="soh-lbl">${it.physUnit}</div>
+        <input type="number" inputmode="numeric" pattern="[0-9]*" min="0"
+          value="${v}" class="soh-input${!isNew&&lastSoh==v?' pre':''}"
+          onchange="newSOH['${code}']=+this.value;updateLiveTicker();calcHealthScore();renderStockoutAlerts()" placeholder="0"/>
+      </div>
+      <div class="soh-col">
+        <div class="soh-lbl">Last</div>
+        <div class="last-soh-val">${lastSoh}</div>
+        <div class="last-soh-val" style="color:var(--blue)">${avg>0?avg.toFixed(1)+'/cyc':'—'}</div>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;justify-content:flex-end;padding:2px 14px 6px;gap:6px">
+      <span style="font-size:10px;color:var(--ink3)">Active</span>
+      <button class="toggle-sw on" id="tog-${code}" onclick="toggleInactive('${code}')"></button>
+    </div>`;
+  });
+  document.getElementById('stockList').innerHTML = html || '<div class="empty-state">No items</div>';
+}
+
+// ── PROJECTION ───────────────────────────────────────────────────
+function calcProjection() {
+  const {lead,win}=getP(); const cycDays=14;
+  projData = Object.entries(allItems()).map(([code,it]) => {
+    const soh=newSOH[code]!=null?+newSOH[code]:0;
+    const avgPhys=avgUsage(code);
+    const isNew=!it.cycles||it.cycles.every(([s])=>s===null);
+    const daily=avgPhys/cycDays;
+    const trend=trendDir(code);
+    const adjDaily=trend===1?daily*1.15:daily;
+    const needLead=adjDaily*lead;
+    const needCycle=adjDaily*win;
+    const totalNeeded=needLead+needCycle;
+    const physShortfall=Math.max(0,totalNeeded-soh);
+    const formsNeeded=physShortfall>0?Math.ceil(physShortfall/it.mult):0;
+    const orderForms=formsNeeded>0?Math.ceil(formsNeeded/it.minForms)*it.minForms:0;
+    const orderPhys=orderForms*it.mult;
+    const atRisk=soh<needLead&&avgPhys>0;
+    return{code,...it,soh,avgPhys,adjDaily,trend,needLead,needCycle,totalNeeded,orderForms,orderPhys,atRisk,isNew};
+  });
+  const toOrder=projData.filter(i=>i.orderForms>0);
+  const atRisk=projData.filter(i=>i.atRisk);
+  const val=Math.round(toOrder.reduce((s,i)=>s+i.orderForms*i.pricePerBox,0));
+  document.getElementById('metricsBox').innerHTML=`
+    <div class="metric"><div class="met-lbl">Items to order</div><div class="met-val">${toOrder.length}</div></div>
+    <div class="metric"><div class="met-lbl">Est. value</div><div class="met-val" style="font-size:17px">$${val.toLocaleString('en-AU')}</div></div>
+    <div class="metric"><div class="met-lbl">At-risk items</div><div class="met-val" style="color:${atRisk.length?'var(--red)':'var(--green)'}">${atRisk.length||'None ✓'}</div></div>
+    <div class="metric"><div class="met-lbl">Rising usage</div><div class="met-val">${projData.filter(i=>i.trend===1).length}</div></div>`;
+  document.getElementById('riskBanner').innerHTML=atRisk.length?`<div class="notice notice-red" style="margin-top:0">
+    <strong>⚠ ${atRisk.length} item${atRisk.length>1?'s':''} may run out before delivery</strong>
+    ${atRisk.map(i=>`${i.name}: ${i.soh} ${i.physUnit} on hand, needs ~${i.needLead.toFixed(1)} during wait`).join('<br>')}
+  </div>`:'';
+  updateTimeline();
+  orderAdjustments = {}; // reset adjustments on new projection
+  buildCF('cf-proj','proj');
+  renderProj();
+  goPage('proj');
+}
+
+function adjustQty(code, delta) {
+  const it = projData.find(i => i.code === code);
+  if (!it) return;
+  const current = orderAdjustments[code] != null ? orderAdjustments[code] : it.orderForms;
+  const step = it.minForms || 1;
+  const next = Math.max(0, current + delta * step);
+  orderAdjustments[code] = next;
+  renderProj();
+}
+
+function updateOrderMetrics() {
+  const toOrder = projData.filter(i => (orderAdjustments[i.code] != null ? orderAdjustments[i.code] : i.orderForms) > 0);
+  const val = Math.round(toOrder.reduce((s,i) => {
+    const qty = orderAdjustments[i.code] != null ? orderAdjustments[i.code] : i.orderForms;
+    return s + qty * i.pricePerBox;
+  }, 0));
+  const atRisk = projData.filter(i => i.atRisk);
+  document.getElementById('metricsBox').innerHTML = `
+    <div class="metric"><div class="met-lbl">Items to order</div><div class="met-val">${toOrder.length}</div></div>
+    <div class="metric"><div class="met-lbl">Est. value</div><div class="met-val" style="font-size:17px">$${val.toLocaleString('en-AU')}</div></div>
+    <div class="metric"><div class="met-lbl">At-risk items</div><div class="met-val" style="color:${atRisk.length?'var(--red)':'var(--green)'}">${atRisk.length||'None ✓'}</div></div>
+    <div class="metric"><div class="met-lbl">Rising usage</div><div class="met-val">${projData.filter(i=>i.trend===1).length}</div></div>`;
+}
+
+function renderProj() {
+  const items = projData
+    .filter(i => activeCat.proj === 'All' || i.cat === activeCat.proj)
+    .sort((a,b) => {
+      const ai=CAT_ORDER.indexOf(a.cat), bi=CAT_ORDER.indexOf(b.cat);
+      return (ai===-1?99:ai)-(bi===-1?99:bi) || parseInt(a.code)-parseInt(b.code);
+    });
+  let html = '', lastCat = '';
+  items.forEach(it => {
+    if (it.cat !== lastCat) { html += `<div class="section-hdr">${it.cat}</div>`; lastCat = it.cat; }
+    const tStr = it.trend===1 ? ' <span class="trend-up">↑</span>' : it.trend===-1 ? ' <span class="trend-dn">↓</span>' : '';
+    const adjQty = orderAdjustments[it.code] != null ? orderAdjustments[it.code] : it.orderForms;
+    const isModified = orderAdjustments[it.code] != null && orderAdjustments[it.code] !== it.orderForms;
+    const isAtRisk = it.atRisk && it.avgPhys > 0;
+    let statusBadge = '';
+    if (adjQty === 0 && it.isNew) statusBadge = '<span class="badge b-new">new</span>';
+    else if (adjQty === 0 && isAtRisk) statusBadge = '<span class="badge b-risk">⚠ at risk</span>';
+    else if (adjQty === 0 && it.soh < it.needLead*1.2 && it.avgPhys>0) statusBadge = '<span class="badge b-tight">tight</span>';
+    else if (adjQty === 0) statusBadge = '<span class="badge b-ok">ok</span>';
+    const detail = it.avgPhys > 0
+      ? `SOH: ${it.soh} ${it.physUnit} · wait ~${it.needLead.toFixed(1)} · cycle ~${it.needCycle.toFixed(1)}`
+      : `SOH: ${it.soh} ${it.physUnit} · no usage data`;
+    const adjuster = `<div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
+      <div class="qty-adjuster">
+        <button class="qty-adj-btn" onclick="adjustQty('${it.code}',-1)">−</button>
+        <div class="qty-adj-val${isModified?' modified':''}">${adjQty}</div>
+        <button class="qty-adj-btn" onclick="adjustQty('${it.code}',+1)">+</button>
+      </div>
+      <div class="qty-adj-unit">${adjQty > 0 ? it.orderUnit : '—'}${isModified ? ' <span style=\"color:var(--brand)\">✎</span>' : ''}</div>
+      ${adjQty === 0 ? statusBadge : ''}
+    </div>`;
+    html += `<div class="proj-row${isAtRisk ? ' at-risk' : ''}">
+      <div><div class="proj-name">${it.name}${tStr}</div><div class="proj-detail">${detail}</div></div>
+      ${adjuster}
+    </div>`;
+  });
+  document.getElementById('projList').innerHTML = html || '<div class="empty-state">No items</div>';
+  updateOrderMetrics();
+}
+
+// ── HISTORY ──────────────────────────────────────────────────────
+function renderHist() {
+  const allFiltered=Object.entries(allItems()).filter(([,v])=>activeCat.hist==='All'||v.cat===activeCat.hist);
+  const items=allFiltered.sort((a,b)=>{
+    const ai=CAT_ORDER.indexOf(a[1].cat),bi=CAT_ORDER.indexOf(b[1].cat);
+    return (ai===-1?99:ai)-(bi===-1?99:bi)||parseInt(a[0])-parseInt(b[0]);
+  });
+  let html='',lastCat='';
+  items.forEach(([code,it])=>{
+    if(it.cat!==lastCat){html+=`<div class="section-hdr">${it.cat}</div>`;lastCat=it.cat;}
+    const cycles=it.cycles||[];
+    const isNew=cycles.every(([s])=>s===null);
+    const trend=trendDir(code);
+    const tBadge=trend===1?'<span class="tb tb-r">↑ rising</span>':trend===-1?'<span class="tb tb-f">↓ falling</span>':'';
+    let chips;
+    if(isNew){
+      chips='<span style="font-size:12px;color:var(--ink3)">No history yet</span>';
+    } else {
+      chips=cycles.map(([soh,ord],i)=>{
+        const lbl=CYCLES_LABELS[i]||('Cycle '+(i+1));
+        return `<span class="hist-chip${ord>0?' ord':''}">${lbl}: ${soh!==null?soh:'—'}${ord>0?' (+'  + ord + ')':''}</span>`;
+      }).join('');
+    }
+    html+=`<div class="hist-item">
+      <div class="hist-name">${it.name}<span style="font-size:11px;color:var(--ink3)">${code}</span>${tBadge}</div>
+      <div class="hist-chips">${chips}</div>
+    </div>`;
+  });
+  document.getElementById('histList').innerHTML=html;
+}
+
+// ── ADD PRODUCT ──────────────────────────────────────────────────
+function addProduct() {
+  const name=document.getElementById('np-name').value.trim();
+  const code=document.getElementById('np-code').value.trim()||('CUSTOM-'+Date.now());
+  const cat=document.getElementById('np-cat').value;
+  const physUnit=document.getElementById('np-physunit').value.trim();
+  const orderUnit=document.getElementById('np-orderunit').value.trim()||physUnit;
+  const mult=+document.getElementById('np-mult').value||1;
+  const pricePerBox=+document.getElementById('np-price').value||0;
+  const soh=+document.getElementById('np-soh').value||0;
+  if(!name){alert('Please enter a product name.');return;}
+  if(!cat){alert('Please select a category.');return;}
+  if(!physUnit){alert('Please enter the physical unit.');return;}
+  customProds[code]={name,cat,physUnit,orderUnit,minForms:1,pricePerBox,mult,cycles:Array(8).fill(null).map(()=>[null,0])};
+  newSOH[code]=soh;
+  ['np-name','np-code','np-physunit','np-orderunit','np-mult','np-price','np-soh'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('np-cat').value='';
+  renderCustomList();
+  buildCF('cf-stock','stock');buildCF('cf-hist','hist');buildCF('cf-inactive','inactive');
+  renderStock();
+  alert(`"${name}" added!`);
+}
+function removeCustom(code){
+  delete customProds[code]; delete newSOH[code];
+  renderCustomList(); buildCF('cf-stock','stock'); buildCF('cf-hist','hist'); renderStock();
+}
+function renderCustomList(){
+  const keys=Object.keys(customProds);
+  const sec=document.getElementById('customItemsSection');
+  const list=document.getElementById('customItemsList');
+  if(!keys.length){sec.style.display='none';return;}
+  sec.style.display='block';
+  list.innerHTML=keys.map(code=>{
+    const it=customProds[code];
+    return `<div class="custom-item-row">
+      <div><div style="font-size:13px;font-weight:600">${it.name}</div><div style="font-size:11px;color:var(--ink3)">${code} · ${it.cat} · $${it.pricePerBox}/${it.orderUnit}</div></div>
+      <button class="del-btn" onclick="removeCustom('${code}')">Remove</button>
+    </div>`;
+  }).join('');
+}
+
+// ── COPY ORDER ───────────────────────────────────────────────────
+function getAdjustedQty(it) {
+  return orderAdjustments[it.code] != null ? orderAdjustments[it.code] : it.orderForms;
+}
+
+function buildOrderLines() {
+  const date = document.getElementById('orderDate').value || new Date().toLocaleDateString('en-AU');
+  const {lead, win} = getP();
+  const atRisk = projData.filter(i => i.atRisk && i.avgPhys > 0);
+  const toOrder = projData.filter(i => getAdjustedQty(i) > 0);
+  const totalVal = Math.round(toOrder.reduce((s,i) => s + getAdjustedQty(i) * i.pricePerBox, 0));
+  return { date, lead, win, atRisk, toOrder, totalVal };
+}
+
+function sendOrderEmail() {
+  const { date, lead, win, atRisk, toOrder, totalVal } = buildOrderLines();
+  let body = `Order Request — ${SHOP}\nDate: ${date}  |  Lead time: ${lead} days  |  Window: ${win} days\nEstimated total: $${totalVal.toLocaleString('en-AU')} AUD\n`;
+  body += `\n${'='.repeat(44)}\n`;
+  if (atRisk.length) {
+    body += `\n⚠ AT-RISK ITEMS (may run out before delivery arrives):\n`;
+    atRisk.forEach(i => { body += `  • ${i.name} — ${i.soh} ${i.physUnit} on hand\n`; });
+    body += '\n';
+  }
+  let lastCat = '';
+  toOrder.forEach(i => {
+    const qty = getAdjustedQty(i);
+    if (i.cat !== lastCat) { body += `\n${i.cat.toUpperCase()}\n`; lastCat = i.cat; }
+    const tag = orderAdjustments[i.code] != null && orderAdjustments[i.code] !== i.orderForms ? ' *adjusted*' : '';
+    body += `  ${i.code.toString().padEnd(6)} ${i.name}: ${qty} ${i.orderUnit}${tag}\n`;
+  });
+  body += `\n${'='.repeat(44)}\nEstimated order total: $${totalVal.toLocaleString('en-AU')} AUD\n\n— Sent via Sharetea Pakenham Order App`;
+  const subject = encodeURIComponent(`Order Request — ${SHOP} — ${date}`);
+  const bodyEnc = encodeURIComponent(body);
+  window.location.href = `mailto:pakenham@sharetea.com.au?subject=${subject}&body=${bodyEnc}`;
+  return false;
+}
+
+function copyOrder() {
+  const { date, lead, win, atRisk, toOrder } = buildOrderLines();
+  let lines = [`${SHOP} — Order`, `Date: ${date} | Lead: ${lead}d | Window: ${win}d\n`];
+  if (atRisk.length) {
+    lines.push('⚠ AT-RISK:');
+    atRisk.forEach(i => lines.push(`  !! ${i.code} ${i.name}: ${i.soh} ${i.physUnit}`));
+    lines.push('');
+  }
+  let lastCat = '';
+  toOrder.forEach(i => {
+    const qty = getAdjustedQty(i);
+    if (i.cat !== lastCat) { lines.push(`\n--- ${i.cat.toUpperCase()} ---`); lastCat = i.cat; }
+    lines.push(`${i.code}  ${i.name}: ${qty} ${i.orderUnit}`);
+  });
+  const text = lines.join('\n');
+  if (navigator.share) { navigator.share({title: SHOP+' Order', text}).catch(()=>{}); }
+  else if (navigator.clipboard) {
+    navigator.clipboard.writeText(text).then(() => {
+      const btn = document.getElementById('copyBtn');
+      btn.textContent = '✓ Copied!';
+      setTimeout(() => btn.textContent = '📋 Copy order list', 2500);
+    });
+  }
+}
+
+// ── DASHBOARD ────────────────────────────────────────────────────
+const CYCLE_DATES = ['7 Jan 26','21 Jan 26','5 Mar 26','2 Apr 26','15 Apr 26','30 Apr 26','14 May 26','27 May 26','11 Jun 26'];
+let dashMode = 'spend';
+
+function renderDashboard() {
+  const items = Object.values(liveHist);
+
+  // ── KPIs ──
+  const cycleCount = CYCLE_DATES.length;
+  document.getElementById('kpiCycles').textContent = cycleCount;
+  document.getElementById('dashDate').textContent = 'Jan–May 2026';
+
+  // Rising items
+  const rising = Object.keys(liveHist).filter(c => trendDir(c) === 1).length;
+  document.getElementById('kpiRising').textContent = rising;
+
+  // Dead stock: items with most weeks of cover (slow moving / overstocked)
+  // weeks cover = current SOH / (avg usage per cycle / cycle days * 7)
+  const deadStock = Object.entries(liveHist).map(([code, it]) => {
+    const avg = avgUsage(code);
+    const lastSoh = it.cycles.filter(([s]) => s !== null).pop();
+    const soh = lastSoh ? lastSoh[0] : 0;
+    if (avg === 0 || soh === 0) return null;
+    const weeklyRate = avg / 2; // avg per fortnight -> per week
+    const weeksCover = soh / weeklyRate;
+    return { code, name: it.name, soh, avg, weeksCover };
+  }).filter(Boolean).sort((a, b) => b.weeksCover - a.weeksCover);
+  const deadCount = deadStock.filter(d => d.weeksCover > 4).length;
+  document.getElementById('kpiAtRisk').textContent = deadCount;
+
+  // ── SPEND / ITEMS BAR CHART ──
+  renderSpendChart();
+
+  // ── TOP MOVERS ──
+  const movers = Object.entries(liveHist).map(([code, it]) => ({
+    name: it.name, avg: avgUsage(code), trend: trendDir(code)
+  })).filter(m => m.avg > 0).sort((a,b) => b.avg - a.avg).slice(0, 6);
+  const maxAvg = movers[0]?.avg || 1;
+  document.getElementById('topMoversList').innerHTML = movers.map(m => {
+    const pct = Math.round((m.avg / maxAvg) * 100);
+    const trendStr = m.trend === 1 ? '<span style="color:var(--red);font-size:11px;flex-shrink:0">↑</span>'
+      : m.trend === -1 ? '<span style="color:var(--green);font-size:11px;flex-shrink:0">↓</span>'
+      : '<span style="color:var(--ink3);font-size:11px;flex-shrink:0">→</span>';
+    const shortName = m.name.length > 14 ? m.name.slice(0,13)+'…' : m.name;
+    return `<div style="display:grid;grid-template-columns:minmax(0,1fr) 44px 24px 14px;gap:4px;align-items:center;padding:5px 10px;border-bottom:1px solid var(--border)">
+      <span style="font-size:11px;font-weight:600;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${shortName}</span>
+      <div style="height:5px;background:var(--border);border-radius:99px;overflow:hidden"><div style="height:100%;width:${pct}%;background:var(--brand);border-radius:99px"></div></div>
+      <span style="font-size:11px;font-weight:700;color:var(--ink2);text-align:right">${m.avg.toFixed(1)}</span>
+      ${trendStr}
+    </div>`;
+  }).join('');
+
+  // ── DEAD STOCK ──
+  const deadTop = deadStock.slice(0, 6);
+  document.getElementById('watchList').innerHTML = deadTop.length ? deadTop.map(d => {
+    const wks = d.weeksCover;
+    const color = wks > 8 ? '#a32d2d' : wks > 4 ? '#854f0b' : '#2d8a4e';
+    const bg    = wks > 8 ? '#fcebeb' : wks > 4 ? '#faeeda' : '#eaf4ee';
+    const shortName = d.name.length > 16 ? d.name.slice(0,15)+'…' : d.name;
+    return `<div class="at-risk-row">
+      <div class="at-risk-dot" style="background:${color}"></div>
+      <span class="at-risk-name">${shortName}</span>
+      <span class="at-risk-badge" style="background:${bg};color:${color}">${wks.toFixed(1)}w cover</span>
+    </div>`;
+  }).join('') : '<div style="padding:14px;font-size:12px;color:var(--ink3);text-align:center">No slow movers ✓</div>';
+
+  // ── CATEGORY CHART ──
+  renderCatChart();
+
+  // ── TREND SPARKLINES ──
+  renderTrendSparklines();
+}
+
+function renderSpendChart() {
+  const el = document.getElementById('spendChart');
+  if (!el) return;
+  const vals = CYCLE_DATES.map((_, ci) => {
+    if (dashMode === 'spend') {
+      return Object.values(liveHist).reduce((sum, it) => {
+        const c = it.cycles[ci];
+        return sum + (c && c[1] ? c[1] * it.pricePerBox : 0);
+      }, 0);
+    } else {
+      return Object.values(liveHist).reduce((sum, it) => {
+        const c = it.cycles[ci];
+        return sum + (c && c[1] > 0 ? 1 : 0);
+      }, 0);
+    }
+  });
+  const maxVal = Math.max(...vals, 1);
+  const W = 320, H = 110, padL = 40, padR = 8, padT = 10, padB = 22;
+  const chartW = W - padL - padR, chartH = H - padT - padB;
+  const barW = Math.max(4, Math.floor(chartW / vals.length) - 3);
+  let svg = `<svg viewBox="0 0 ${W} ${H}" width="100%" height="${H}" xmlns="http://www.w3.org/2000/svg" style="display:block">`;
+  // Grid lines
+  [0.25,0.5,0.75,1].forEach(frac => {
+    const y = padT + chartH*(1-frac);
+    const label = dashMode==='spend' ? '$'+Math.round(maxVal*frac/100)*100 : Math.round(maxVal*frac);
+    svg += `<line x1="${padL}" y1="${y}" x2="${W-padR}" y2="${y}" stroke="#e5e5e5" stroke-width="1"/>`;
+    svg += `<text x="${padL-3}" y="${y+3}" text-anchor="end" font-size="8" fill="#999">${label}</text>`;
+  });
+  // Bars
+  vals.forEach((v, i) => {
+    const x = padL + i*(chartW/vals.length) + 1;
+    const bH = Math.max(2, (v/maxVal)*chartH);
+    const y = padT + chartH - bH;
+    const lbl = dashMode==='spend' ? '$'+Math.round(v/100)*100 : v;
+    svg += `<rect x="${x}" y="${y}" width="${barW}" height="${bH}" rx="2" fill="url(#bg${i})"/>`;
+    svg += `<defs><linearGradient id="bg${i}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#e63946"/><stop offset="100%" stop-color="#ff8c94"/></linearGradient></defs>`;
+    if (bH > 14) svg += `<text x="${x+barW/2}" y="${y+10}" text-anchor="middle" font-size="7" fill="white" font-weight="bold">${lbl}</text>`;
+  });
+  svg += '</svg>';
+  // X labels
+  const labelHtml = vals.map((_, i) => {
+    const d = CYCLE_DATES[i] || '';
+    return `<span style="flex:1;text-align:center;font-size:9px;color:var(--ink3);overflow:hidden">${d}</span>`;
+  }).join('');
+  el.innerHTML = svg + `<div style="display:flex;padding:2px ${padR}px 0 ${padL}px">${labelHtml}</div>`;
+}
+
+function renderCatChart() {
+  const el = document.getElementById('catChart');
+  if (!el) return;
+  const cats = ['Tea Leaves','Flavor Powder','Syrup & Jam','Toppings','Packaging'];
+  const catColors = ['#185fa5','#2d8a4e','#e63946','#854f0b','#7c3aed'];
+  const catShort = {'Tea Leaves':'Tea','Flavor Powder':'Powder','Syrup & Jam':'Syrup & Jam','Toppings':'Toppings','Packaging':'Packaging'};
+  const catAvgs = cats.map(cat => {
+    return Object.keys(liveHist).filter(c => liveHist[c].cat === cat).reduce((s,c) => s + avgUsage(c), 0);
+  });
+  const maxVal = Math.max(...catAvgs, 1);
+  const W = 320, rowH = 18, padL = 72, padR = 36, padT = 4;
+  const H = cats.length * rowH + padT * 2;
+  const chartW = W - padL - padR;
+  let svg = `<svg viewBox="0 0 ${W} ${H}" width="100%" height="${H}" xmlns="http://www.w3.org/2000/svg" style="display:block">`;
+  cats.forEach((cat, i) => {
+    const y = padT + i * rowH;
+    const bW = Math.max(2, (catAvgs[i] / maxVal) * chartW);
+    const bH = 10, bY = y + (rowH - bH) / 2;
+    svg += `<defs><linearGradient id="cg${i}" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="${catColors[i]}"/><stop offset="100%" stop-color="${catColors[i]}88"/></linearGradient></defs>`;
+    svg += `<text x="${padL-5}" y="${bY+bH/2+3.5}" text-anchor="end" font-size="10" fill="#555">${catShort[cat]||cat}</text>`;
+    svg += `<rect x="${padL}" y="${bY}" width="${bW}" height="${bH}" rx="3" fill="url(#cg${i})"/>`;
+    svg += `<text x="${padL+bW+4}" y="${bY+bH/2+3.5}" font-size="9" font-weight="bold" fill="#555">${catAvgs[i].toFixed(1)}</text>`;
+  });
+  svg += '</svg>';
+  el.innerHTML = svg;
+}
+
+function renderTrendSparklines() {
+  // Show usage trend sparkline per CATEGORY
+  const cats = ['Tea Leaves','Flavor Powder','Syrup & Jam','Toppings','Packaging'];
+  const catColors = {'Tea Leaves':'#185fa5','Flavor Powder':'#2d8a4e','Syrup & Jam':'#e63946','Toppings':'#854f0b','Packaging':'#7c3aed'};
+  const numCycles = Math.max(...Object.values(liveHist).map(it => it.cycles.length));
+
+  const catData = cats.map(cat => {
+    // Sum usage across all items in this category per cycle
+    const items = Object.entries(liveHist).filter(([,it]) => it.cat === cat);
+    const uses = Array.from({length: numCycles - 1}, (_, ci) => {
+      return items.reduce((sum, [code, it]) => {
+        const prev = it.cycles[ci];
+        const curr = it.cycles[ci + 1];
+        if (!prev || !curr || prev[0] === null || curr[0] === null) return sum;
+        return sum + Math.max(0, prev[0] + prev[1] * it.mult - curr[0]);
+      }, 0);
+    });
+    const maxU = Math.max(...uses, 1);
+    const color = catColors[cat] || '#999';
+    // Trend: compare first half vs second half
+    const half = Math.floor(uses.length / 2);
+    const early = uses.slice(0, half).reduce((a,b)=>a+b,0) / Math.max(half,1);
+    const late  = uses.slice(-half).reduce((a,b)=>a+b,0) / Math.max(half,1);
+    const trend = late > early * 1.15 ? '↑' : late < early * 0.85 ? '↓' : '→';
+    const trendColor = trend === '↑' ? '#2d8a4e' : trend === '↓' ? '#E24B4A' : '#999';
+    const avgUse = uses.reduce((a,b)=>a+b,0) / Math.max(uses.length,1);
+
+    // SVG sparkline
+    const sw = 90, sh = 30;
+    const pts = uses.map((v, i) => {
+      const x = (i / Math.max(uses.length-1,1)) * sw;
+      const y = sh - 3 - (v / maxU) * (sh - 6);
+      return x.toFixed(1)+','+y.toFixed(1);
+    }).join(' ');
+    // Area fill
+    const firstX = 0, lastX = sw;
+    const firstY = sh - 3 - (uses[0]/maxU)*(sh-6);
+    const lastY  = sh - 3 - (uses[uses.length-1]/maxU)*(sh-6);
+    const areaPath = 'M0,'+firstY.toFixed(1)+' '+pts.replace(/(\d+\.\d+),(\d+\.\d+)/g, 'L$1,$2').slice(1)+' L'+lastX+','+(sh-1)+' L0,'+(sh-1)+' Z';
+
+    const sparkSvg = '<svg width="'+sw+'" height="'+sh+'" style="flex-shrink:0" viewBox="0 0 '+sw+' '+sh+'">'
+      + '<defs><linearGradient id="sg'+cat.replace(/\W/g,'')+'" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="'+color+'" stop-opacity="0.25"/><stop offset="100%" stop-color="'+color+'" stop-opacity="0.02"/></linearGradient></defs>'
+      + '<path d="'+areaPath+'" fill="url(#sg'+cat.replace(/\W/g,'')+')"/>'
+      + '<polyline points="'+pts+'" fill="none" stroke="'+color+'" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>'
+      + uses.map((v,i) => {
+          const x = (i / Math.max(uses.length-1,1)) * sw;
+          const y = sh - 3 - (v / maxU) * (sh - 6);
+          return '<circle cx="'+x.toFixed(1)+'" cy="'+y.toFixed(1)+'" r="2.5" fill="'+color+'" opacity="0.8"/>';
+        }).join('')
+      + '</svg>';
+
+    return { cat, color, uses, avgUse, trend, trendColor, sparkSvg };
+  });
+
+  document.getElementById('trendSparklines').innerHTML = catData.map(d =>
+    '<div style="display:grid;grid-template-columns:80px 1fr 36px;gap:8px;align-items:center;padding:8px 12px;border-bottom:1px solid var(--border)">'
+    + '<div>'
+    + '<div style="font-size:12px;font-weight:700;color:'+d.color+'">'+d.cat.replace(' Powder','').replace(' & Jam','')+'</div>'
+    + '<div style="font-size:10px;color:var(--ink3)">avg '+d.avgUse.toFixed(0)+'/cycle</div>'
+    + '</div>'
+    + d.sparkSvg
+    + '<div style="text-align:center"><span style="font-size:20px;font-weight:900;color:'+d.trendColor+'">'+d.trend+'</span></div>'
+    + '</div>'
+  ).join('');
+}
+
+function dashToggle(mode) {
+  dashMode = mode;
+  document.getElementById('tog-spend').classList.toggle('active', mode === 'spend');
+  document.getElementById('tog-items').classList.toggle('active', mode === 'items');
+  document.getElementById('chartSubtitle').textContent = mode === 'spend' ? 'est. spend AUD' : 'distinct items ordered';
+  renderSpendChart();
+}
+
+// ── FEATURE 1: STOCK HEALTH SCORE ───────────────────────────────
+function calcHealthScore() {
+  const cats = ['Tea Leaves','Flavor Powder','Syrup & Jam','Toppings','Packaging'];
+  const catShort = {'Tea Leaves':'Tea','Flavor Powder':'Powder','Syrup & Jam':'Syrup','Toppings':'Toppings','Packaging':'Packing'};
+  const catColors = {'Tea Leaves':'#185fa5','Flavor Powder':'#2d8a4e','Syrup & Jam':'#e63946','Toppings':'#854f0b','Packaging':'#7c3aed'};
+  const {lead,win} = getP(); const cycDays = 14;
+
+  const catScores = cats.map(cat => {
+    const items = Object.entries(allItems()).filter(([,v]) => v.cat === cat);
+    if (!items.length) return {cat, score: 100, grade: 'A', color: catColors[cat]};
+    let totalScore = 0;
+    items.forEach(([code, it]) => {
+      const soh = newSOH[code] != null ? +newSOH[code] : 0;
+      const avg = avgUsage(code);
+      if (avg === 0) { totalScore += 80; return; }
+      const daily = avg / cycDays;
+      const needed = daily * (lead + win);
+      const pct = soh / needed;
+      if (pct >= 1) totalScore += 100;
+      else if (pct >= 0.7) totalScore += 75;
+      else if (pct >= 0.4) totalScore += 50;
+      else if (pct > 0) totalScore += 25;
+      else totalScore += 0;
+    });
+    const score = Math.round(totalScore / items.length);
+    const grade = score >= 85 ? 'A' : score >= 70 ? 'B' : score >= 50 ? 'C' : 'D';
+    return {cat, score, grade, color: catColors[cat]};
+  });
+
+  const overall = Math.round(catScores.reduce((s,c) => s+c.score, 0) / catScores.length);
+  const overallGrade = overall >= 85 ? 'A' : overall >= 70 ? 'B' : overall >= 50 ? 'C' : 'D';
+  const gradeColor = overallGrade === 'A' ? '#2d8a4e' : overallGrade === 'B' ? '#185fa5' : overallGrade === 'C' ? '#854f0b' : '#a32d2d';
+  const gradeBg = overallGrade === 'A' ? '#eaf4ee' : overallGrade === 'B' ? '#e6f1fb' : overallGrade === 'C' ? '#faeeda' : '#fcebeb';
+
+  const gradeEl = document.getElementById('healthGrade');
+  gradeEl.textContent = overallGrade;
+  gradeEl.style.color = gradeColor;
+  gradeEl.style.background = gradeBg;
+
+  document.getElementById('healthCats').innerHTML = catScores.map(c => {
+    const gc = c.grade === 'A' ? '#2d8a4e' : c.grade === 'B' ? '#185fa5' : c.grade === 'C' ? '#854f0b' : '#a32d2d';
+    return `<div class="health-cat">
+      <div class="health-cat-name">${catShort[c.cat]||c.cat}</div>
+      <div class="health-cat-grade" style="color:${gc}">${c.grade}</div>
+      <div class="health-cat-bar"><div class="health-cat-fill" style="width:${c.score}%;background:${gc}"></div></div>
+    </div>`;
+  }).join('');
+}
+
+// ── FEATURE 2: PREDICTED STOCKOUT ALERTS ────────────────────────
+function renderStockoutAlerts() {
+  // Items that historically run out (hit 0 or 1) before reorder
+  const alerts = Object.entries(allItems()).map(([code, it]) => {
+    const zeros = it.cycles.filter(([s]) => s !== null && s === 0).length;
+    const ones  = it.cycles.filter(([s]) => s !== null && s === 1).length;
+    const avg   = avgUsage(code);
+    const soh   = newSOH[code] != null ? +newSOH[code] : 0;
+    const daily = avg > 0 ? avg / 14 : 0;
+    const daysLeft = daily > 0 ? Math.floor(soh / daily) : 999;
+    return {code, name: it.name, zeros, ones, avg, soh, daysLeft};
+  }).filter(a => (a.zeros >= 2 || (a.zeros >= 1 && a.daysLeft < 11)) && a.avg > 0)
+    .sort((a,b) => a.daysLeft - b.daysLeft)
+    .slice(0, 5);
+
+  const el = document.getElementById('stockoutAlerts');
+  if (!alerts.length) { el.innerHTML = ''; return; }
+
+  el.innerHTML = `<div class="stockout-alerts">
+    <div style="font-size:12px;font-weight:700;color:var(--ink2);text-transform:uppercase;letter-spacing:.05em;padding:10px 14px 8px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:6px">
+      🔮 Predicted stockout risk <span style="font-size:10px;font-weight:400;color:var(--ink3);text-transform:none;letter-spacing:0">based on history</span>
+    </div>
+    ${alerts.map(a => {
+      const urgent = a.daysLeft < 11;
+      const color = urgent ? '#a32d2d' : '#854f0b';
+      const bg    = urgent ? '#fcebeb' : '#faeeda';
+      const icon  = urgent ? '🚨' : '⚠️';
+      const badge = urgent ? `Runs out in ~${a.daysLeft}d` : `${a.zeros}× stockout`;
+      return `<div class="alert-row">
+        <div class="alert-icon">${icon}</div>
+        <div class="alert-text">
+          <div class="alert-name">${a.name}</div>
+          <div class="alert-detail">SOH: ${a.soh} · avg use: ${a.avg.toFixed(1)}/cycle · hit zero ${a.zeros}× before</div>
+        </div>
+        <span class="alert-badge" style="background:${bg};color:${color}">${badge}</span>
+      </div>`;
+    }).join('')}
+  </div>`;
+}
+
+// ── FEATURE 3: SEASONAL COMPARISON ──────────────────────────────
+function renderSeasonalComparison() {
+  const compared = Object.entries(liveHist).map(([code, it]) => {
+    const cycles = it.cycles.filter(([s]) => s !== null && s !== undefined);
+    if (cycles.length < 4) return null;
+    let uses = [], prev = null;
+    it.cycles.forEach(([soh, ord]) => {
+      if (prev !== null && soh !== null && prev[0] !== null)
+        uses.push(Math.max(0, prev[0] + prev[1] * it.mult - soh));
+      prev = [soh, ord];
+    });
+    if (uses.length < 4) return null;
+    const half = Math.floor(uses.length / 2);
+    const early = uses.slice(0, half).reduce((a,b)=>a+b,0) / half;
+    const recent = uses.slice(-half).reduce((a,b)=>a+b,0) / half;
+    const change = early > 0 ? ((recent - early) / early) * 100 : 0;
+    return {name: it.name, early, recent, change};
+  }).filter(Boolean).sort((a,b) => Math.abs(b.change) - Math.abs(a.change)).slice(0, 8);
+
+  document.getElementById('seasonList').innerHTML = compared.map(c => {
+    const changeColor = c.change > 15 ? '#a32d2d' : c.change < -15 ? '#2d8a4e' : '#555';
+    const changeStr = (c.change > 0 ? '+' : '') + Math.round(c.change) + '%';
+    const shortName = c.name.length > 18 ? c.name.slice(0,17)+'…' : c.name;
+    return `<div class="season-row">
+      <span style="color:var(--ink);font-size:12px">${shortName}</span>
+      <span style="text-align:center;color:var(--ink2)">${c.early.toFixed(1)}</span>
+      <span style="text-align:center;color:var(--ink2)">${c.recent.toFixed(1)}</span>
+      <span style="text-align:center;font-weight:700;color:${changeColor}">${changeStr}</span>
+    </div>`;
+  }).join('');
+}
+
+// ── FEATURE 5: SMART SORT ───────────────────────────────────────
+let currentSort = 'cat';
+function setSort(mode) {
+  currentSort = mode;
+  ['cat','alpha'].forEach(m => {
+    const el = document.getElementById('sort-'+m);
+    if (el) el.classList.toggle('active', m === mode);
+  });
+  renderStock();
+}
+
+const CAT_ORDER = ['Tea Leaves','Flavor Powder','Syrup & Jam','Toppings','Packaging','Merchandise'];
+function sortedItems() {
+  const entries = Object.entries(allItems()).filter(([,v]) => activeCat.stock === 'All' || v.cat === activeCat.stock);
+  if (currentSort === 'alpha') return entries.sort((a,b) => a[1].name.localeCompare(b[1].name));
+  // default: category order then by code
+  return entries.sort((a,b) => {
+    const ai = CAT_ORDER.indexOf(a[1].cat);
+    const bi = CAT_ORDER.indexOf(b[1].cat);
+    const catDiff = (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
+    if (catDiff !== 0) return catDiff;
+    return parseInt(a[0]) - parseInt(b[0]);
+  });
+}
+
+// ── FEATURE 6: QUICK COUNT MODE ─────────────────────────────────
+let qcItems = [], qcIdx = 0;
+function qcStart() {
+  qcItems = sortedItems().map(([code, it]) => ({code, it}));
+  if (!qcItems.length) { alert('No items to count.'); return; }
+  qcIdx = 0;
+  document.getElementById('qcOverlay').classList.remove('qc-hidden');
+  const fab = document.getElementById('qcFab');
+  if (fab) fab.style.display = 'none';
+  qcRender();
+}
+function qcClose() {
+  document.getElementById('qcOverlay').classList.add('qc-hidden');
+  const fab = document.getElementById('qcFab');
+  if (fab) fab.style.display = 'flex';
+  renderStock();
+  updateLiveTicker();
+  calcHealthScore();
+  renderStockoutAlerts();
+}
+function qcRender() {
+  const pct = Math.round((qcIdx / qcItems.length) * 100);
+  document.getElementById('qcProgress').style.width = pct + '%';
+
+  if (qcIdx >= qcItems.length) {
+    document.getElementById('qcBody').innerHTML = `<div class="qc-done">
+      <div class="qc-done-emoji">🎉</div>
+      <div class="qc-done-title">Count complete!</div>
+      <div class="qc-done-sub">All ${qcItems.length} items counted.<br>Your order projection is ready.</div>
+      <button class="qc-done-btn" onclick="qcClose();calcProjection()">View order projection →</button>
+    </div>`;
+    return;
+  }
+
+  const {code, it} = qcItems[qcIdx];
+  const avg = avgUsage(code);
+  const lastSoh = it.cycles && it.cycles.filter(([s])=>s!==null).pop();
+  const lastVal = lastSoh ? lastSoh[0] : '—';
+  const soh = newSOH[code] != null ? newSOH[code] : 0;
+  const zeros = it.cycles ? it.cycles.filter(([s])=>s===0).length : 0;
+  const warnHtml = zeros >= 2 ? `<div class="qc-warn">⚠ Ran out ${zeros}× in history — check carefully</div>` : '';
+
+  document.getElementById('qcBody').innerHTML = `
+    <div class="qc-body">
+      <div class="qc-counter">${qcIdx+1} of ${qcItems.length}</div>
+      <div class="qc-item-name">${it.name}</div>
+      <div class="qc-item-meta">${it.code || code} · count in ${it.physUnit}</div>
+      <div class="qc-last">Last SOH: ${lastVal} · Avg use: ${avg>0?avg.toFixed(1)+'/cycle':'no data'}</div>
+      ${warnHtml}
+      <div class="qc-current" id="qcVal" style="display:none">${soh}</div>
+      <input id="qcInput" type="number" inputmode="numeric" pattern="[0-9]*" min="0"
+        value="${soh}"
+        style="font-size:64px;font-weight:900;color:white;background:transparent;border:none;border-bottom:2px solid rgba(255,255,255,0.3);width:140px;text-align:center;font-family:inherit;line-height:1;margin:16px 0 4px;outline:none;-moz-appearance:textfield"
+        oninput="newSOH['${code}']=+this.value"
+        onfocus="this.style.borderBottomColor='var(--brand)'"
+        onblur="this.style.borderBottomColor='rgba(255,255,255,0.3)'"
+      />
+      <div class="qc-unit">${it.physUnit}</div>
+      <div class="qc-btns">
+        <button class="qc-btn-minus" onclick="qcAdj(-1)">−</button>
+        <button class="qc-btn-plus"  onclick="qcAdj(+1)">+</button>
+      </div>
+      <button class="qc-btn-next" onclick="qcNext()">Next item →</button>
+      <button class="qc-btn-skip" onclick="qcSkip()">Skip this item</button>
+    </div>`;
+  // Auto-select the input for immediate typing
+  setTimeout(() => {
+    const inp = document.getElementById('qcInput');
+    if (inp) { inp.focus(); inp.select(); }
+  }, 100);
+}
+function qcAdj(delta) {
+  const {code} = qcItems[qcIdx];
+  newSOH[code] = Math.max(0, (newSOH[code] != null ? +newSOH[code] : 0) + delta);
+  const inp = document.getElementById('qcInput');
+  if (inp) inp.value = newSOH[code];
+}
+function qcNext() {
+  // Save whatever is in the input field
+  const inp = document.getElementById('qcInput');
+  if (inp) {
+    const {code} = qcItems[qcIdx];
+    newSOH[code] = Math.max(0, +inp.value || 0);
+  }
+  qcIdx++;
+  qcRender();
+}
+function qcSkip() {
+  qcIdx++;
+  qcRender();
+}
+
+// ── FEATURE 8: LIVE ORDER VALUE TICKER ──────────────────────────
+function updateLiveTicker() {
+  const {lead, win} = getP(); const cycDays = 14;
+  let totalVal = 0, itemsNeeded = 0;
+  Object.entries(allItems()).forEach(([code, it]) => {
+    const soh = newSOH[code] != null ? +newSOH[code] : 0;
+    const avg = avgUsage(code);
+    if (avg === 0) return;
+    const daily = avg / cycDays;
+    const adjDaily = trendDir(code) === 1 ? daily * 1.15 : daily;
+    const needed = adjDaily * (lead + win);
+    const shortfall = Math.max(0, needed - soh);
+    if (shortfall > 0) {
+      const forms = Math.ceil(Math.ceil(shortfall / it.mult) / it.minForms) * it.minForms;
+      totalVal += forms * it.pricePerBox;
+      itemsNeeded++;
+    }
+  });
+
+  const el = document.getElementById('tickerValue');
+  const prev = parseInt(el.dataset.prev || '0');
+  el.textContent = '$' + Math.round(totalVal).toLocaleString('en-AU');
+  el.dataset.prev = totalVal;
+  if (Math.abs(totalVal - prev) > 10) {
+    el.classList.add('changed');
+    setTimeout(() => el.classList.remove('changed'), 600);
+  }
+  document.getElementById('tickerItems').textContent = itemsNeeded;
+  document.getElementById('tickerSub').textContent = itemsNeeded > 0
+    ? `${itemsNeeded} items need ordering`
+    : 'All stock looks good ✓';
+}
+
+
+
+// ── STOCKTAKE ────────────────────────────────────────────────────
+const CAT_COLORS_ST = {
+  'Tea Leaves':   '#185fa5',
+  'Flavor Powder':'#2d8a4e',
+  'Syrup & Jam':  '#e63946',
+  'Toppings':     '#854f0b',
+  'Packaging':    '#7c3aed',
+  'Merchandise':  '#0f6e56',
+};
+const BUFFER = 1.20; // 20% in-store buffer
+
+function calcStockValue(code, cycleIdx) {
+  const it = allItemsIncInactive()[code];
+  if (!it) return 0;
+  const cycle = it.cycles[cycleIdx];
+  if (!cycle || cycle[0] === null) return 0;
+  const soh = cycle[0];
+  const unitPrice = it.pricePerBox / it.mult;
+  return soh * unitPrice;
+}
+
+function calcCycleTotal(cycleIdx) {
+  return Object.keys(allItemsIncInactive()).reduce((sum, code) => {
+    return sum + calcStockValue(code, cycleIdx);
+  }, 0);
+}
+
+function calcCycleCatValues(cycleIdx) {
+  const cats = {};
+  Object.entries(allItemsIncInactive()).forEach(([code, it]) => {
+    const val = calcStockValue(code, cycleIdx);
+    cats[it.cat] = (cats[it.cat] || 0) + val;
+  });
+  return cats;
+}
+
+function renderStocktake() {
+  const allIt = allItemsIncInactive();
+  const numCycles = CYCLES_LABELS.length;
+
+  // Calculate totals per cycle
+  const cycleTotals = Array.from({length: numCycles}, (_, i) => calcCycleTotal(i));
+  const withBuffer = cycleTotals.map(v => v * BUFFER);
+  const validTotals = withBuffer.filter(v => v > 0);
+  const lastTotal = withBuffer[withBuffer.length - 1] || 0;
+  const avgTotal = validTotals.length ? validTotals.reduce((a,b)=>a+b,0)/validTotals.length : 0;
+  const peakTotal = Math.max(...withBuffer);
+  const lowTotal = Math.min(...withBuffer.filter(v=>v>0));
+
+  // Hero stats
+  document.getElementById('stTotalVal').textContent = '$' + Math.round(lastTotal).toLocaleString('en-AU');
+  document.getElementById('stBufferVal').textContent = 'Latest cycle · 20% in-store buffer included';
+  document.getElementById('stItemCount').textContent = Object.keys(allIt).length;
+  document.getElementById('stAvgVal').textContent = '$' + Math.round(avgTotal).toLocaleString('en-AU');
+  document.getElementById('stHighVal').textContent = '$' + Math.round(peakTotal).toLocaleString('en-AU');
+  document.getElementById('stLowVal').textContent = '$' + Math.round(lowTotal).toLocaleString('en-AU');
+  document.getElementById('stSnapDate').textContent = CYCLES_LABELS[numCycles-1] || 'latest';
+
+  // ── LINE CHART: total value over time ──
+  renderStLineChart(withBuffer, cycleTotals);
+
+  // ── CATEGORY STACKED AREA CHART ──
+  renderStCatChart(numCycles);
+
+  // ── SNAPSHOT: current cycle by category ──
+  renderStSnapshot(numCycles - 1);
+
+  // ── TOP VALUE ITEMS ──
+  renderStTopItems(numCycles - 1);
+}
+
+function renderStLineChart(withBuffer, withoutBuffer) {
+  const el = document.getElementById('stLineChart');
+  if (!el) return;
+  const W = 320, H = 130, padL = 44, padR = 10, padT = 10, padB = 24;
+  const cW = W - padL - padR, cH = H - padT - padB;
+  const maxVal = Math.max(...withBuffer, 1);
+  const n = withBuffer.length;
+
+  // Build path points
+  const pts1 = withBuffer.map((v, i) => {
+    const x = padL + (i / Math.max(n-1,1)) * cW;
+    const y = padT + cH - (v / maxVal) * cH;
+    return [x, y];
+  });
+  const pts2 = withoutBuffer.map((v, i) => {
+    const x = padL + (i / Math.max(n-1,1)) * cW;
+    const y = padT + cH - (v / maxVal) * cH;
+    return [x, y];
+  });
+
+  const toPath = pts => pts.map((p,i) => (i===0?'M':'L') + p[0].toFixed(1) + ',' + p[1].toFixed(1)).join(' ');
+
+  // Area fill for buffered line
+  const areaPath = toPath(pts1) + ` L${pts1[pts1.length-1][0]},${padT+cH} L${padL},${padT+cH} Z`;
+
+  let svg = `<svg viewBox="0 0 ${W} ${H}" width="100%" height="${H}" xmlns="http://www.w3.org/2000/svg" style="display:block;overflow:visible">
+    <defs>
+      <linearGradient id="stAreaGrad" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="#e63946" stop-opacity="0.15"/>
+        <stop offset="100%" stop-color="#e63946" stop-opacity="0.02"/>
+      </linearGradient>
+    </defs>`;
+
+  // Grid lines
+  [0.25,0.5,0.75,1].forEach(f => {
+    const y = padT + cH*(1-f);
+    const label = '$' + Math.round(maxVal*f/1000) + 'k';
+    svg += `<line x1="${padL}" y1="${y}" x2="${W-padR}" y2="${y}" stroke="#e5e5e5" stroke-width="1"/>`;
+    svg += `<text x="${padL-4}" y="${y+3.5}" text-anchor="end" font-size="8" fill="#999">${label}</text>`;
+  });
+
+  // Area + lines
+  svg += `<path d="${areaPath}" fill="url(#stAreaGrad)"/>`;
+  svg += `<path d="${toPath(pts1)}" fill="none" stroke="#e63946" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>`;
+  svg += `<path d="${toPath(pts2)}" fill="none" stroke="#185fa5" stroke-width="1.5" stroke-dasharray="4,3" stroke-linecap="round"/>`;
+
+  // Dots on buffered line
+  pts1.forEach(([x,y], i) => {
+    if (withBuffer[i] > 0) {
+      svg += `<circle cx="${x}" cy="${y}" r="3" fill="white" stroke="#e63946" stroke-width="1.5"/>`;
+      // Value tooltip on hover - skip for brevity, show on last point
+      if (i === pts1.length-1) {
+        svg += `<text x="${x}" y="${y-7}" text-anchor="middle" font-size="8" fill="#e63946" font-weight="bold">$${Math.round(withBuffer[i]/1000*10)/10}k</text>`;
+      }
+    }
+  });
+
+  // X labels
+  svg += '</svg>';
+  const labelHtml = withBuffer.map((_, i) => {
+    const lbl = CYCLES_LABELS[i] || '';
+    return `<span style="flex:1;text-align:center;font-size:8px;color:var(--ink3)">${lbl}</span>`;
+  }).join('');
+
+  el.innerHTML = svg + `<div style="display:flex;padding:2px ${padR}px 0 ${padL}px">${labelHtml}</div>`;
+
+  // Legend
+  el.insertAdjacentHTML('afterend', `
+    <div class="st-legend" style="padding:6px 14px 0">
+      <span class="st-leg-item"><span class="st-leg-dot" style="background:#e63946"></span>With 20% buffer</span>
+      <span class="st-leg-item"><span class="st-leg-dot" style="background:#185fa5;opacity:.6"></span>Base value</span>
+    </div>`);
+}
+
+function renderStCatChart(numCycles) {
+  const el = document.getElementById('stCatChart');
+  if (!el) return;
+  const cats = CAT_ORDER.filter(c => c !== 'Merchandise');
+  const catData = cats.map(cat => ({
+    cat,
+    color: CAT_COLORS_ST[cat] || '#999',
+    values: Array.from({length: numCycles}, (_, i) => {
+      return Object.entries(allItemsIncInactive())
+        .filter(([,it]) => it.cat === cat)
+        .reduce((sum, [code]) => sum + calcStockValue(code, i), 0);
+    })
+  }));
+
+  const W = 320, H = 130, padL = 44, padR = 10, padT = 10, padB = 24;
+  const cW = W - padL - padR, cH = H - padT - padB;
+  const maxVal = Math.max(...Array.from({length: numCycles}, (_, i) =>
+    catData.reduce((s, d) => s + d.values[i], 0)
+  ), 1);
+  const n = numCycles;
+
+  let svg = `<svg viewBox="0 0 ${W} ${H}" width="100%" height="${H}" xmlns="http://www.w3.org/2000/svg" style="display:block">`;
+
+  // Grid
+  [0.25,0.5,0.75,1].forEach(f => {
+    const y = padT + cH*(1-f);
+    svg += `<line x1="${padL}" y1="${y}" x2="${W-padR}" y2="${y}" stroke="#e5e5e5" stroke-width="1"/>`;
+    svg += `<text x="${padL-4}" y="${y+3.5}" text-anchor="end" font-size="8" fill="#999">$${Math.round(maxVal*f/1000)}k</text>`;
+  });
+
+  // Stacked bars
+  const barW = Math.max(4, Math.floor(cW / n) - 3);
+  for (let i = 0; i < n; i++) {
+    let yOffset = padT + cH;
+    catData.forEach(d => {
+      const v = d.values[i];
+      if (v <= 0) return;
+      const bH = Math.max(1, (v / maxVal) * cH);
+      yOffset -= bH;
+      const x = padL + i * (cW / n) + 1;
+      svg += `<rect x="${x}" y="${yOffset}" width="${barW}" height="${bH}" fill="${d.color}" opacity="0.85"/>`;
+    });
+  }
+
+  svg += '</svg>';
+  const labelHtml = Array.from({length: n}, (_, i) =>
+    `<span style="flex:1;text-align:center;font-size:8px;color:var(--ink3)">${CYCLES_LABELS[i]||''}</span>`
+  ).join('');
+  el.innerHTML = svg + `<div style="display:flex;padding:2px ${padR}px 0 ${padL}px">${labelHtml}</div>`;
+
+  // Legend
+  document.getElementById('stCatLegend').innerHTML = catData.map(d =>
+    `<span class="st-leg-item"><span class="st-leg-dot" style="background:${d.color}"></span>${d.cat}</span>`
+  ).join('');
+}
+
+function renderStSnapshot(cycleIdx) {
+  const cats = [...CAT_ORDER];
+  const snap = cats.map(cat => {
+    const val = Object.entries(allItemsIncInactive())
+      .filter(([,it]) => it.cat === cat)
+      .reduce((sum, [code]) => sum + calcStockValue(code, cycleIdx), 0);
+    const units = Object.entries(allItemsIncInactive())
+      .filter(([,it]) => it.cat === cat)
+      .reduce((sum, [code]) => {
+        const it = allItemsIncInactive()[code];
+        const cyc = it.cycles[cycleIdx];
+        return sum + (cyc && cyc[0] !== null ? cyc[0] : 0);
+      }, 0);
+    return { cat, val, units, color: CAT_COLORS_ST[cat] || '#999' };
+  }).filter(s => s.val > 0 || s.units > 0);
+
+  document.getElementById('stSnapshot').innerHTML = snap.map(s => `
+    <div class="st-snap-cell">
+      <div class="st-snap-cat" style="color:${s.color}">${s.cat}</div>
+      <div class="st-snap-val">$${Math.round(s.val).toLocaleString('en-AU')}</div>
+      <div class="st-snap-units">${s.units} units on hand</div>
+    </div>`).join('');
+}
+
+function renderStTopItems(cycleIdx) {
+  const items = Object.entries(allItemsIncInactive()).map(([code, it]) => {
+    const val = calcStockValue(code, cycleIdx);
+    const cyc = it.cycles[cycleIdx];
+    const soh = cyc && cyc[0] !== null ? cyc[0] : 0;
+    return { code, name: it.name, cat: it.cat, val, soh, physUnit: it.physUnit, unitPrice: it.pricePerBox / it.mult };
+  }).filter(i => i.val > 0).sort((a,b) => b.val - a.val).slice(0, 10);
+
+  const maxVal = items[0]?.val || 1;
+  document.getElementById('stTopItems').innerHTML = items.map((it, idx) => {
+    const pct = Math.round((it.val / maxVal) * 100);
+    const color = CAT_COLORS_ST[it.cat] || '#999';
+    return `<div class="st-bar-row">
+      <span class="st-bar-name" style="font-size:11px">${it.name}</span>
+      <div class="st-bar-track"><div class="st-bar-fill" style="width:${pct}%;background:${color}"></div></div>
+      <span class="st-bar-val">$${Math.round(it.val)}</span>
+    </div>`;
+  }).join('');
+}
+
+// ── INACTIVE MANAGEMENT ─────────────────────────────────────────
+function toggleInactive(code) {
+  if (inactiveItems.has(code)) {
+    inactiveItems.delete(code);
+  } else {
+    inactiveItems.add(code);
+  }
+  localStorage.setItem('inactiveItems', JSON.stringify([...inactiveItems]));
+  renderStock();
+  renderInactive();
+  buildCF('cf-inactive','inactive');
+  updateLiveTicker();
+  calcHealthScore();
+}
+
+function reinstateItem(code) {
+  inactiveItems.delete(code);
+  localStorage.setItem('inactiveItems', JSON.stringify([...inactiveItems]));
+  renderStock();
+  renderInactive();
+  buildCF('cf-inactive','inactive');
+  buildCF('cf-stock','stock');
+  updateLiveTicker();
+  calcHealthScore();
+}
+
+function renderInactive() {
+  const all = allItemsIncInactive();
+  const items = Object.entries(all)
+    .filter(([code]) => inactiveItems.has(code))
+    .filter(([,v]) => activeCat.inactive === 'All' || v.cat === activeCat.inactive)
+    .sort((a,b) => {
+      const ai = CAT_ORDER.indexOf(a[1].cat), bi = CAT_ORDER.indexOf(b[1].cat);
+      return (ai===-1?99:ai)-(bi===-1?99:bi) || parseInt(a[0])-parseInt(b[0]);
+    });
+
+  if (!items.length) {
+    document.getElementById('inactiveList').innerHTML =
+      '<div class="empty-state" style="padding:32px">No inactive items</div>';
+    return;
+  }
+
+  let html = '', lastCat = '';
+  items.forEach(([code, it]) => {
+    if (it.cat !== lastCat) {
+      html += `<div class="section-hdr">${it.cat}</div>`;
+      lastCat = it.cat;
+    }
+    const cycles = it.cycles || [];
+    const isNew = cycles.every(([s]) => s === null);
+    const chips = isNew
+      ? '<span style="font-size:12px;color:var(--ink3)">No history</span>'
+      : cycles.map(([soh, ord], i) => {
+          const lbl = CYCLES_LABELS[i] || ('Cycle ' + (i+1));
+          return `<span class="hist-chip${ord>0?' ord':''}">${lbl}: ${soh!==null?soh:'—'}${ord>0?' (+'+ord+')':''}</span>`;
+        }).join('');
+
+    html += `<div class="inactive-item">
+      <div class="inactive-name">
+        ${it.name}
+        <span style="font-size:11px;color:var(--ink3)">${code}</span>
+        <span class="inactive-banner">inactive</span>
+      </div>
+      <div class="inactive-meta">${it.orderUnit} · $${it.pricePerBox}/order · ${it.mult} ${it.physUnit}/order</div>
+      <div class="inactive-chips">${chips}</div>
+      <div style="margin-top:8px">
+        <button class="reinstate-btn" onclick="reinstateItem('${code}')">✓ Reinstate</button>
+      </div>
+    </div>`;
+  });
+  document.getElementById('inactiveList').innerHTML = html;
+}
+
+// ── INIT ─────────────────────────────────────────────────────────
+document.getElementById('orderDate').valueAsDate=new Date();
+document.getElementById('leadDays').addEventListener('input',updateTimeline);
+document.getElementById('windowDays').addEventListener('input',updateTimeline);
+if(scriptUrl) { const inp = document.getElementById('scriptUrlInput'); if(inp) inp.value = scriptUrl; }
+buildCF('cf-stock','stock');buildCF('cf-hist','hist');buildCF('cf-inactive','inactive');
+updateTimeline();
+// Seed default inactive items if localStorage is empty (first run)
+// Always ensure known-delisted items are inactive, merge with user's existing prefs
+const ALWAYS_INACTIVE = ['3007','3021','3023','4001','4024','4026','5021','5033'];
+ALWAYS_INACTIVE.forEach(code => inactiveItems.add(code));
+localStorage.setItem('inactiveItems', JSON.stringify([...inactiveItems]));
+
+// Always render with built-in data immediately
+initSOH(); renderStock(); renderHist();
+updateLiveTicker(); calcHealthScore(); renderStockoutAlerts();
+requestAnimationFrame(renderDashboard);
+// Pre-render stocktake
+requestAnimationFrame(renderStocktake);
+// Show FAB since stock page is default
+const qcFabEl = document.getElementById('qcFab');
+if (qcFabEl) qcFabEl.style.display = 'flex';
+// Then try to sync with sheets (will update if connected)
+loadFromSheets();
+</script>
+</body>
+</html>
