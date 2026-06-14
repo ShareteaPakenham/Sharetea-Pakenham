@@ -117,8 +117,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .hist-chip{font-size:11px;background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:2px 7px;color:var(--ink2)}
 .hist-chip.ord{border-color:var(--blue-border);background:var(--blue-bg);color:var(--blue)}
 .tb{font-size:10px;font-weight:700;padding:2px 6px;border-radius:99px}
-.tb-r{background:var(--red-bg);color:var(--red)}
-.tb-f{background:var(--green-bg);color:var(--green)}
+.tb-r{background:var(--green-bg);color:var(--green)}
+.tb-f{background:var(--red-bg);color:var(--red)}
 /* CAT FILTER */
 .cat-filter{display:flex;gap:6px;padding:8px 12px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}
 .cat-filter::-webkit-scrollbar{display:none}
@@ -610,79 +610,6 @@ const XLSX = {
 </div>
 
 <!-- PAGE: ADD PRODUCT -->
-<div class="page" id="page-add">
-  <div class="card" style="margin-top:12px">
-    <div class="card-title">➕ Add new product</div>
-    <div class="add-grid">
-      <div class="add-cell full">
-        <div class="add-lbl">Product name *</div>
-        <input type="text" class="add-input" id="np-name" placeholder="e.g. Taro Jelly"/>
-      </div>
-      <div class="add-cell">
-        <div class="add-lbl">Product code</div>
-        <input type="text" class="add-input" id="np-code" placeholder="e.g. 4025"/>
-      </div>
-      <div class="add-cell">
-        <div class="add-lbl">Category *</div>
-        <select class="add-input" id="np-cat">
-          <option value="">Select...</option>
-          <option>Tea Leaves</option>
-          <option>Flavor Powder</option>
-          <option>Syrup &amp; Jam</option>
-          <option>Toppings</option>
-          <option>Packaging</option>
-          <option>Merchandise</option>
-          <option>Other</option>
-        </select>
-      </div>
-      <div class="add-cell">
-        <div class="add-lbl">Physical unit *</div>
-        <input type="text" class="add-input" id="np-physunit" placeholder="btls / bags / sleeves"/>
-      </div>
-      <div class="add-cell">
-        <div class="add-lbl">Order unit (on form)</div>
-        <input type="text" class="add-input" id="np-orderunit" placeholder="e.g. box (4), BOX"/>
-      </div>
-      <div class="add-cell">
-        <div class="add-lbl">Units per order *</div>
-        <input type="number" class="add-input" id="np-mult" placeholder="e.g. 4" min="1"/>
-      </div>
-      <div class="add-cell">
-        <div class="add-lbl">Price per order ($) *</div>
-        <input type="number" class="add-input" id="np-price" placeholder="e.g. 80" min="0"/>
-      </div>
-      <div class="add-cell">
-        <div class="add-lbl">Current SOH</div>
-        <input type="number" class="add-input" id="np-soh" placeholder="0" min="0"/>
-      </div>
-    </div>
-    <button class="add-btn" onclick="addProduct()">Add to order list</button>
-  </div>
-  <div id="customItemsSection" style="display:none;margin:0 12px">
-    <div style="font-size:12px;font-weight:700;color:var(--ink2);text-transform:uppercase;letter-spacing:.04em;padding:12px 2px 6px">Added this session</div>
-    <div style="border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow)" id="customItemsList"></div>
-  </div>
-  <div class="notice notice-amber" style="margin-top:12px">
-    <strong>💡 Session only</strong>
-    Custom products added here are included in this session's projection. To make them permanent, let the store manager know to update the app.
-  </div>
-
-  <div style="margin:16px 12px 0;background:white;border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden">
-    <div style="font-size:12px;font-weight:700;color:var(--ink2);text-transform:uppercase;letter-spacing:.05em;padding:10px 14px 8px;border-bottom:1px solid var(--border)">⚙️ Google Sheets sync</div>
-    <div style="padding:12px 14px">
-      <div style="font-size:13px;color:var(--ink2);margin-bottom:10px;line-height:1.5">Paste your Apps Script URL to enable saving order history across all devices.</div>
-      <div style="display:flex;gap:8px">
-        <input type="url" class="add-input" id="scriptUrlInput" placeholder="https://script.google.com/macros/s/..." style="font-size:13px"/>
-        <button onclick="saveScriptUrl()" style="padding:8px 14px;background:var(--brand);color:white;border:none;border-radius:var(--radius-sm);font-size:14px;font-weight:700;font-family:inherit;cursor:pointer;white-space:nowrap">Save</button>
-      </div>
-      <div class="notice notice-green" id="urlSavedMsg" style="display:none;margin-top:10px;margin-bottom:0"><strong>✓ Connected!</strong> History will sync automatically.</div>
-      <div style="font-size:12px;color:var(--ink3);margin-top:8px" id="syncStatusLine">Not connected — history saved on this device only.</div>
-    </div>
-  </div>
-  <div style="height:16px"></div>
-</div>
-
-<!-- PAGE: STOCKTAKE -->
 <div class="page" id="page-stocktake">
 
   <!-- Hero: current stock value -->
@@ -757,17 +684,20 @@ const XLSX = {
 </div>
 
 <!-- PAGE: INACTIVE -->
-<div class="page" id="page-inactive">
-  <div class="notice notice-amber" style="margin-top:12px">
-    <strong>Inactive products</strong> — hidden from ordering but retained with full history. Tap Reinstate to make active again.
-  </div>
-  <div class="cat-filter" id="cf-inactive"></div>
-  <div id="inactiveList"></div>
-</div>
+
 
 <!-- PAGE: SETUP -->
 <!-- PAGE: STOCKTAKE -->
 <div class="page" id="page-setup">
+  <!-- Settings sub-tabs -->
+  <div style="display:flex;gap:0;border-bottom:2px solid var(--border);margin-bottom:4px;padding:0 12px">
+    <button onclick="showSettingsTab('google')" id="stab-google" style="flex:1;padding:10px 4px;background:none;border:none;border-bottom:2px solid var(--brand);margin-bottom:-2px;font-size:12px;font-weight:700;color:var(--brand);font-family:inherit;cursor:pointer">⚙️ Google Sheets</button>
+    <button onclick="showSettingsTab('inactive')" id="stab-inactive" style="flex:1;padding:10px 4px;background:none;border:none;border-bottom:2px solid transparent;margin-bottom:-2px;font-size:12px;font-weight:600;color:var(--ink3);font-family:inherit;cursor:pointer">🚫 Inactive</button>
+    <button onclick="showSettingsTab('add')" id="stab-add" style="flex:1;padding:10px 4px;background:none;border:none;border-bottom:2px solid transparent;margin-bottom:-2px;font-size:12px;font-weight:600;color:var(--ink3);font-family:inherit;cursor:pointer">➕ Add Item</button>
+  </div>
+
+  <!-- Google Sheets sub-page -->
+  <div id="stab-content-google">
   <div class="notice notice-amber" style="margin-top:12px">
     <strong>⚙️ Google Sheets setup</strong>
     Connect once to save order history across all devices and staff.
@@ -786,7 +716,46 @@ const XLSX = {
   </div>
   <div class="notice notice-green" id="urlSavedMsg" style="display:none;margin-top:10px"><strong>✓ Connected!</strong> History will now sync automatically.</div>
   <div style="height:20px"></div>
-</div>
+  </div><!-- end stab-content-google -->
+
+  <!-- Inactive sub-page -->
+  <div id="stab-content-inactive" style="display:none">
+    <div class="notice notice-amber" style="margin-top:12px">
+      <strong>Inactive products</strong> — hidden from ordering but retained with full history. Tap Reinstate to make active again.
+    </div>
+    <div class="cat-filter" id="cf-inactive"></div>
+    <div id="inactiveList"></div>
+  </div>
+
+  <!-- Add Item sub-page -->
+  <div id="stab-content-add" style="display:none">
+    <div class="notice notice-blue" style="margin-top:12px">
+      <strong>Add a custom product</strong> — included in this session's order projection.
+    </div>
+    <div class="card" style="margin:10px 12px 0">
+      <input class="param-input" id="newName" placeholder="Product name" style="width:100%;margin-bottom:8px"/>
+      <input class="param-input" id="newCode" placeholder="Product code (e.g. 9001)" style="width:100%;margin-bottom:8px"/>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+        <input class="param-input" id="newPhysUnit" placeholder="Physical unit (e.g. bags)"/>
+        <input class="param-input" id="newOrderUnit" placeholder="Order unit (e.g. box of 20)"/>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:8px">
+        <input type="number" class="param-input" id="newMult" placeholder="Qty/box"/>
+        <input type="number" class="param-input" id="newPrice" placeholder="Price/box $"/>
+        <select class="param-input" id="newCat">
+          <option value="Tea Leaves">Tea Leaves</option>
+          <option value="Flavor Powder">Flavor Powder</option>
+          <option value="Syrup &amp; Jam">Syrup &amp; Jam</option>
+          <option value="Toppings">Toppings</option>
+          <option value="Packaging">Packaging</option>
+        </select>
+      </div>
+      <button onclick="addCustomItem()" style="width:100%;padding:12px;background:var(--brand);color:white;border:none;border-radius:var(--radius);font-size:15px;font-weight:700;font-family:inherit;cursor:pointer">+ Add product</button>
+    </div>
+    <div id="customItemsList" style="margin:10px 12px 0"></div>
+  </div>
+
+</div><!-- end page-setup -->
 
 </div><!-- end .app -->
 
@@ -812,14 +781,8 @@ const XLSX = {
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
     Stocktake
   </button>
-  <button class="navbtn" id="nav-inactive" onclick="goPage('inactive')">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
-    Inactive
-  </button>
-  <button class="navbtn" id="nav-add" onclick="goPage('add')">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
-    Add
-  </button>
+
+
   <button class="navbtn" id="nav-setup" onclick="goPage('setup')">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
     Settings
@@ -905,7 +868,7 @@ const BASE_HIST = {
 let liveHist    = JSON.parse(JSON.stringify(BASE_HIST)); // deep copy, updated from Sheets
 let customProds = {};
 let newSOH      = {};
-let activeCat   = {stock:'All', stockcount:'All', proj:'All', hist:'All', inactive:'All'};
+let activeCat   = {stock:'All', stockcount:'All', proj:'All', hist:'All', setup:'All', inactive:'All'};
 let projData    = [];
 let orderAdjustments = {}; // code -> adjusted orderForms override
 let inactiveItems = new Set(JSON.parse(localStorage.getItem('inactiveItems') || '[]'));
@@ -1111,7 +1074,7 @@ function goPage(pg) {
   if (pg === 'stock') requestAnimationFrame(() => { try{renderDashboard();}catch(e){} try{updateLiveTicker();}catch(e){} try{calcHealthScore();}catch(e){} try{renderStockoutAlerts();}catch(e){} });
   if (pg === 'stockcount') { requestAnimationFrame(() => { try{renderStock();}catch(e){} try{updateSmartPrefillBanner();}catch(e){} }); }
   if (pg === 'hist') requestAnimationFrame(() => { try{renderHist();}catch(e){} });
-  if (pg === 'inactive') { buildCF('cf-inactive','inactive'); renderInactive(); }
+  if (pg === 'inactive') { showSettingsTab('inactive'); buildCF('cf-inactive','inactive'); renderInactive(); pg = 'setup'; }
   if (pg === 'stocktake') requestAnimationFrame(renderStocktake);
 }
 
@@ -2846,6 +2809,22 @@ function colourSOH(input, avg) {
     input.style.borderColor = '#2d8a4e';
     input.style.background = '#f0faf4';
   }
+}
+
+
+// ── SETTINGS TABS ─────────────────────────────────────────────────
+function showSettingsTab(tab) {
+  ['google','inactive','add'].forEach(t => {
+    const content = document.getElementById('stab-content-'+t);
+    const btn = document.getElementById('stab-'+t);
+    if (content) content.style.display = t === tab ? 'block' : 'none';
+    if (btn) {
+      btn.style.borderBottomColor = t === tab ? 'var(--brand)' : 'transparent';
+      btn.style.color = t === tab ? 'var(--brand)' : 'var(--ink3)';
+      btn.style.fontWeight = t === tab ? '700' : '600';
+    }
+  });
+  if (tab === 'inactive') { buildCF('cf-inactive','inactive'); renderInactive(); }
 }
 
 // ── CLEAR FUNCTIONS ──────────────────────────────────────────────
