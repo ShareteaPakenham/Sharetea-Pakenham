@@ -880,10 +880,10 @@ const BASE_HIST = {
 let liveHist    = JSON.parse(JSON.stringify(BASE_HIST)); // deep copy, updated from Sheets
 let customProds = {};
 let newSOH      = {};
-let activeCat   = {stock:'All', stockcount:'All', proj:'All', hist:'All', setup:'All', inactive:'All'};
+let activeCat   = JSON.parse(localStorage.getItem('activeCat') || 'null') || {stock:'All', stockcount:'All', proj:'All', hist:'All', setup:'All', inactive:'All'};
 let projData    = [];
 let orderAdjustments = {}; // code -> adjusted orderForms override
-let holidayUplift = false; // 20% coverage boost on top items
+let holidayUplift = localStorage.getItem('holidayUplift') === 'true'; // 20% coverage boost on top items
 let inactiveItems = new Set(JSON.parse(localStorage.getItem('inactiveItems') || '[]'));
 let pinCallback = null;
 let scriptUrl   = localStorage.getItem('sheetScriptUrl') || 'https://script.google.com/macros/s/AKfycbwpMvX5LcE_s0kz_fLcxwZEl9NJHz71OSaTyx_dcQwzurk72LMyfwVHIZk601ulCr8O/exec';
@@ -1141,7 +1141,7 @@ function buildCF(id, pg) {
     const b = document.createElement('button');
     b.className = 'cat-btn'+(c===activeCat[pg]?' active':'');
     b.textContent = c;
-    b.onclick = () => { activeCat[pg]=c; buildCF(id,pg);
+    b.onclick = () => { activeCat[pg]=c; localStorage.setItem('activeCat', JSON.stringify(activeCat)); buildCF(id,pg);
       if(pg==='stock'||pg==='stockcount') renderStock();
       else if(pg==='proj') renderProj();
       else renderHist();
@@ -1174,7 +1174,7 @@ function renderStock() {
         <div class="soh-lbl">${it.physUnit}</div>
         <input type="number" inputmode="numeric" pattern="[0-9]*" min="0"
           value="${v}" class="soh-input${!isNew&&lastSoh==v?' pre':''}"
-          onchange="newSOH['${code}']=+this.value;updateLiveTicker();calcHealthScore();renderStockoutAlerts();colourSOH(this,${avg.toFixed(1)})" placeholder="0"/>
+          onchange="newSOH['${code}']=+this.value;saveNewSOH();updateLiveTicker();calcHealthScore();renderStockoutAlerts();colourSOH(this,${avg.toFixed(1)})" placeholder="0"/>
       </div>
       <div class="soh-col">
         <div class="soh-lbl">Last</div>
@@ -1861,7 +1861,7 @@ function qcRender() {
       <input id="qcInput" type="number" inputmode="numeric" pattern="[0-9]*" min="0"
         value="${soh}"
         style="font-size:64px;font-weight:900;color:white;background:transparent;border:none;border-bottom:2px solid rgba(255,255,255,0.3);width:140px;text-align:center;font-family:inherit;line-height:1;margin:16px 0 4px;outline:none;-moz-appearance:textfield"
-        oninput="newSOH['${code}']=+this.value"
+        oninput="newSOH['${code}']=+this.value;saveNewSOH()"
         onfocus="this.style.borderBottomColor='var(--brand)'"
         onblur="this.style.borderBottomColor='rgba(255,255,255,0.3)'"
       />
@@ -1884,6 +1884,7 @@ function qcAdj(delta) {
   newSOH[code] = Math.max(0, (newSOH[code] != null ? +newSOH[code] : 0) + delta);
   const inp = document.getElementById('qcInput');
   if (inp) inp.value = newSOH[code];
+  saveNewSOH();
 }
 function qcNext() {
   // Save whatever is in the input field
@@ -1892,6 +1893,7 @@ function qcNext() {
     const {code} = qcItems[qcIdx];
     newSOH[code] = Math.max(0, +inp.value || 0);
   }
+  saveNewSOH();
   qcIdx++;
   qcRender();
 }
@@ -2564,6 +2566,7 @@ async function executeSaveStockCount() {
     const payload = { action: 'saveStockCount', date, shop: SHOP, soh: sohData };
     await fetch(scriptUrl, { method: 'POST', mode: 'no-cors', body: JSON.stringify(payload) });
     setSyncStatus('ok', 'Count saved ✓');
+    localStorage.removeItem('newSOH');
     alert('Stock count saved! Your manager can now review and process the order.');
   } catch(e) {
     setSyncStatus('error', 'Save failed');
@@ -2843,9 +2846,13 @@ function showSettingsTab(tab) {
 }
 
 
+// ── SOH PERSISTENCE ──────────────────────────────────────────────
+function saveNewSOH() {
+  try { localStorage.setItem('newSOH', JSON.stringify(newSOH)); } catch(e) {}
+}
+
 // ── HOLIDAY UPLIFT ────────────────────────────────────────────────
-function toggleHolidayUplift() {
-  holidayUplift = !holidayUplift;
+function applyHolidayUpliftUI() {
   const btn = document.getElementById('holidayUpliftBtn');
   const banner = document.getElementById('holidayUpliftBanner');
   if (btn) {
@@ -2855,11 +2862,17 @@ function toggleHolidayUplift() {
   }
   if (banner) banner.style.display = holidayUplift ? 'flex' : 'none';
 }
+function toggleHolidayUplift() {
+  holidayUplift = !holidayUplift;
+  localStorage.setItem('holidayUplift', holidayUplift);
+  applyHolidayUpliftUI();
+}
 
 // ── CLEAR FUNCTIONS ──────────────────────────────────────────────
 function clearStockCount() {
   if (!confirm('Clear all stock count entries and start fresh?')) return;
   Object.keys(allItems()).forEach(code => { newSOH[code] = ''; });
+  localStorage.removeItem('newSOH');
   orderAdjustments = {};
   projData = [];
   renderStock();
@@ -2948,20 +2961,33 @@ function renderInactive() {
 }
 
 // ── INIT ─────────────────────────────────────────────────────────
-document.getElementById('leadDays').addEventListener('input',updateTimeline);
-document.getElementById('windowDays').addEventListener('input',updateTimeline);
+// Restore persisted order params
+const savedLead = localStorage.getItem('leadDays');
+const savedWin  = localStorage.getItem('windowDays');
+if (savedLead) { const el = document.getElementById('leadDays');   if (el) el.value = savedLead; }
+if (savedWin)  { const el = document.getElementById('windowDays'); if (el) el.value = savedWin;  }
+document.getElementById('leadDays').addEventListener('input', function() { localStorage.setItem('leadDays', this.value); updateTimeline(); });
+document.getElementById('windowDays').addEventListener('input', function() { localStorage.setItem('windowDays', this.value); updateTimeline(); });
 if(scriptUrl) { const inp = document.getElementById('scriptUrlInput'); if(inp) inp.value = scriptUrl; }
 buildCF('cf-stock','stockcount');buildCF('cf-hist','hist');buildCF('cf-inactive','inactive');
 updateTimeline();
 updateNextOrderDue();
-// Seed default inactive items if localStorage is empty (first run)
-// Always ensure known-delisted items are inactive, merge with user's existing prefs
+// Seed default inactive items on first run only — never override user's saved prefs
 const ALWAYS_INACTIVE = ['3007','3021','4015','4001','4024','4026','5021','5033'];
-ALWAYS_INACTIVE.forEach(code => inactiveItems.add(code));
-localStorage.setItem('inactiveItems', JSON.stringify([...inactiveItems]));
+if (!localStorage.getItem('inactiveItems')) {
+  ALWAYS_INACTIVE.forEach(code => inactiveItems.add(code));
+  localStorage.setItem('inactiveItems', JSON.stringify([...inactiveItems]));
+}
 
 // Always render with built-in data immediately
-initSOH(true); renderStock(); renderHist();
+initSOH(true);
+// Restore any in-progress stock count saved before a timeout
+try {
+  const savedSOH = JSON.parse(localStorage.getItem('newSOH') || 'null');
+  if (savedSOH) Object.assign(newSOH, savedSOH);
+} catch(e) {}
+renderStock(); renderHist();
+applyHolidayUpliftUI();
 updateLiveTicker(); calcHealthScore(); renderStockoutAlerts();
 requestAnimationFrame(renderDashboard);
 updateSmartPrefillBanner();
