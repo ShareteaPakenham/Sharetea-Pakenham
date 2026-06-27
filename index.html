@@ -806,7 +806,7 @@ const XLSX = {
 <script>
 const SHOP = 'Sharetea Pakenham';
 const PIN  = '1681';
-const CYCLES_LABELS = ['07/01/26','21/01/26','05/03/26','02/04/26','15/04/26','30/04/26','14/05/26','27/05/26','11/06/26'];
+let CYCLES_LABELS = ['07/01/26','21/01/26','05/03/26','02/04/26','15/04/26','30/04/26','14/05/26','27/05/26','11/06/26'];
 
 // ── ITEM CATALOGUE ──────────────────────────────────────────────
 const BASE_HIST = {
@@ -959,8 +959,31 @@ function setSyncStatus(state, text) {
   }
 }
 
+// ── LIVE HISTORY PERSISTENCE ─────────────────────────────────────
+// liveHist previously only ever lived in memory — closing the tab or
+// the OS reclaiming the page silently lost every saved cycle, even
+// though the data had already been written to Google Sheets. These
+// two functions keep a local mirror so a reload doesn't wipe it.
+function persistLiveHist() {
+  try {
+    localStorage.setItem('liveHist', JSON.stringify(liveHist));
+    localStorage.setItem('cyclesLabels', JSON.stringify(CYCLES_LABELS));
+  } catch(e) { /* storage full or unavailable — saved data is still safe in the Sheet */ }
+}
+function restoreLiveHist() {
+  try {
+    const savedHist = JSON.parse(localStorage.getItem('liveHist') || 'null');
+    const savedLabels = JSON.parse(localStorage.getItem('cyclesLabels') || 'null');
+    if (savedHist) Object.assign(liveHist, savedHist);
+    if (savedLabels && savedLabels.length) {
+      CYCLES_LABELS.length = 0;
+      savedLabels.forEach(l => CYCLES_LABELS.push(l));
+    }
+  } catch(e) {}
+}
+
 async function loadFromSheets() {
-  // Render built-in data immediately - no JSONP/fetch (avoids Safari CORS errors)
+  // Render built-in data immediately so the screen isn't blank while we check the network
   try { initSOH(true); } catch(e) {}
   try { renderStock(); } catch(e) {}
   try { renderHist(); } catch(e) {}
@@ -968,6 +991,38 @@ async function loadFromSheets() {
   try { calcHealthScore(); } catch(e) {}
   try { renderStockoutAlerts(); } catch(e) {}
   requestAnimationFrame(function() { try { renderDashboard(); } catch(e) {} });
+
+  // Restore anything saved locally first (covers the gap before/if the network call below fails)
+  restoreLiveHist();
+
+  // Then try to pull the real, authoritative history from the Sheet —
+  // this is what actually fixes cycles "disappearing": previously this
+  // function never asked the backend for saved data at all.
+  if (scriptUrl) {
+    try {
+      const data = await jsonpFetch(scriptUrl + '?action=getHistory');
+      if (data && data.cycles) {
+        Object.keys(data.cycles).forEach(code => {
+          if (liveHist[code]) liveHist[code].cycles = data.cycles[code];
+        });
+        if (data.cycleLabels && data.cycleLabels.length) {
+          CYCLES_LABELS.length = 0;
+          data.cycleLabels.forEach(l => CYCLES_LABELS.push(l));
+        }
+        persistLiveHist();
+        try { initSOH(true); } catch(e) {}
+        try { renderStock(); } catch(e) {}
+        try { renderHist(); } catch(e) {}
+        try { updateLiveTicker(); } catch(e) {}
+        try { calcHealthScore(); } catch(e) {}
+        try { renderStockoutAlerts(); } catch(e) {}
+        requestAnimationFrame(function() { try { renderDashboard(); } catch(e) {} });
+      }
+    } catch(e) {
+      // network/JSONP failed — fall back silently to whatever we already restored/rendered above
+    }
+  }
+
   setSyncStatus('ok', 'Data: ' + (CYCLES_LABELS[CYCLES_LABELS.length-1] || 'built-in'));
 }
 
@@ -1012,6 +1067,15 @@ async function saveToSheets(orderDate, cycleData) {
         if (liveHist[code].cycles.length > 20) liveHist[code].cycles.shift();
       }
     });
+    // build a proper DD/MM/YY label from the order date and append it,
+    // instead of letting the history page fall back to "Cycle N"
+    const dParts = orderDate.split('-'); // orderDate is YYYY-MM-DD from <input type="date">
+    if (dParts.length === 3) {
+      const label = dParts[2] + '/' + dParts[1] + '/' + dParts[0].slice(2);
+      CYCLES_LABELS.push(label);
+      if (CYCLES_LABELS.length > 20) CYCLES_LABELS.shift();
+    }
+    persistLiveHist(); // NEW — save liveHist + labels so a reload doesn't lose this cycle
     setSyncStatus('ok', 'Saved ✓');
     renderHist();
     return true;
