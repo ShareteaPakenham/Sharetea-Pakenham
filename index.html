@@ -2687,6 +2687,7 @@ async function checkPendingStockCount() {
 
 function applyPendingSOH() {
   if (!pendingSOHData || !pendingSOHData.soh) return;
+  const pendingDate = pendingSOHData.date; // capture before dismissPendingSOH() nulls pendingSOHData
   Object.entries(pendingSOHData.soh).forEach(([code, val]) => {
     newSOH[code] = val;
   });
@@ -2695,13 +2696,14 @@ function applyPendingSOH() {
   calcHealthScore();
   dismissPendingSOH();
   // Set the order date to the count date if available
-  if (pendingSOHData.date) {
+  if (pendingDate) {
     const dateEl = document.getElementById('orderDate');
-    if (dateEl) dateEl.value = pendingSOHData.date;
+    if (dateEl) dateEl.value = pendingDate;
   }
   // Clear pending from sheets
   if (scriptUrl) {
-    fetch(scriptUrl, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ action: 'clearPendingCount', shop: SHOP }) });
+    fetch(scriptUrl, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ action: 'clearPendingCount', shop: SHOP }) })
+      .catch(e => console.error('clearPendingCount failed:', e));
   }
 }
 
