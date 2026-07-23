@@ -519,11 +519,17 @@ if(xr(e,"index.xml"))throw new Error("Unsupported NUMBERS 09 file");throw new Er
       <div class="param-cell">
         <div class="param-label">Order date</div>
         <input type="date" class="param-input" id="orderDate"/>
+        <div style="font-size:10px;color:var(--ink3);margin-top:2px">auto-stamped when you save</div>
       </div>
       <div class="param-cell">
-        <div class="param-label">Next order due</div>
-        <div style="font-size:16px;font-weight:700;color:var(--brand);padding-top:4px" id="nextOrderDue">—</div>
+        <div class="param-label">Next order due <span id="nextOrderResetWrap" style="display:none">· <a href="#" onclick="resetNextOrderDate();return false" style="color:var(--blue);text-decoration:none;font-weight:600">reset</a></span></div>
+        <input type="date" class="param-input" id="nextOrderDateInput" style="font-weight:700;color:var(--brand)" onchange="setNextOrderDate(this.value)"/>
         <div style="font-size:10px;color:var(--ink3);margin-top:2px" id="nextOrderDays"></div>
+      </div>
+      <div class="param-cell">
+        <div class="param-label">Order frequency (days)</div>
+        <input type="number" class="param-input" id="orderFrequencyDays" value="14" min="1" max="60"/>
+        <div style="font-size:10px;color:var(--ink3);margin-top:2px">days between order cycles</div>
       </div>
       <div class="param-cell">
         <div class="param-label">Lead time (days)</div>
@@ -532,10 +538,6 @@ if(xr(e,"index.xml"))throw new Error("Unsupported NUMBERS 09 file");throw new Er
       <div class="param-cell">
         <div class="param-label">Total cover needed</div>
         <div style="font-size:20px;font-weight:700;color:var(--ink);padding-top:4px" id="totalCoverDisp">25 days</div>
-      </div>
-      <div class="param-cell" style="grid-column:1/-1">
-        <div class="param-label">Order window (days)</div>
-        <input type="number" class="param-input" id="windowDays" value="14" min="7" max="30"/>
       </div>
     </div>
   </div>
@@ -882,6 +884,9 @@ let projData    = [];
 let orderAdjustments = {}; // code -> adjusted orderForms override
 let holidayUplift = localStorage.getItem('holidayUplift') === 'true'; // 20% coverage boost on top items
 let inactiveItems = new Set(JSON.parse(localStorage.getItem('inactiveItems') || '[]'));
+// Manual override for "next order due" — normally auto-calculated as last cycle + 14 days,
+// but staff can move it if lead times change. Stored as YYYY-MM-DD, cleared to go back to auto.
+let nextOrderOverride = localStorage.getItem('nextOrderDateOverride') || null;
 let pinCallback = null;
 let scriptUrl   = localStorage.getItem('sheetScriptUrl') || 'https://script.google.com/macros/s/AKfycbwpMvX5LcE_s0kz_fLcxwZEl9NJHz71OSaTyx_dcQwzurk72LMyfwVHIZk601ulCr8O/exec';
 
@@ -1116,7 +1121,11 @@ document.getElementById('pinInput').addEventListener('keydown', e => { if(e.key=
 
 // ── SAVE ORDER ───────────────────────────────────────────────────
 async function executeSave() {
-  const date = document.getElementById('orderDate').value || new Date().toISOString().slice(0,10);
+  // Stamp today's date at the moment of saving — not manually managed
+  const today = new Date();
+  const dateEl = document.getElementById('orderDate');
+  if (dateEl) dateEl.valueAsDate = today;
+  const date = dateEl && dateEl.value ? dateEl.value : today.toISOString().slice(0,10);
   // build cycleData from current projData
   const cycleData = {};
   projData.forEach(it => {
@@ -1128,6 +1137,11 @@ async function executeSave() {
     const btn = document.getElementById('copyBtn').nextElementSibling; // save btn
     btn.textContent = '✓ Saved to Google Sheets!';
     setTimeout(() => btn.textContent = '💾 Save to history', 3000);
+    // A new cycle has just been saved — any one-off "next order due" override
+    // was for getting to *this* order; clear it so the next cycle auto-calculates
+    // fresh from today + the order window, instead of silently staying pinned.
+    if (nextOrderOverride) { nextOrderOverride = null; localStorage.removeItem('nextOrderDateOverride'); }
+    try { updateNextOrderDue(); } catch(e) {}
   }
 }
 
@@ -1157,7 +1171,7 @@ function goPage(pg) {
 }
 
 // ── TIMELINE ─────────────────────────────────────────────────────
-function getP() { return { lead: +document.getElementById('leadDays').value||11, win: +document.getElementById('windowDays').value||14 }; }
+function getP() { return { lead: +document.getElementById('leadDays').value||11, win: getOrderFrequencyDays() }; }
 function updateTimeline() {
   const {lead,win} = getP(); const total = lead+win;
   const pct = Math.round(lead/total*100)+'%';
@@ -1991,19 +2005,15 @@ function updateLiveTicker() {
   const {lead, win} = getP();
   const cycDays = 14;
 
-  // ── Work out next order due date (last cycle + 14 days) ──
-  const lastLabel = CYCLES_LABELS[CYCLES_LABELS.length - 1] || '';
-  const parts = lastLabel.split('/');
-  let nextOrderDate = null;
+  // ── Work out next order due date (respects manual override, else last cycle + 14 days) ──
+  let nextOrderDate = getNextOrderDate();
   let daysToOrder = 0;
   let daysSinceCount = 0;
-  if (parts.length === 3) {
-    const lastDate = new Date('20' + parts[2] + '-' + parts[1] + '-' + parts[0]);
-    nextOrderDate = new Date(lastDate);
-    nextOrderDate.setDate(nextOrderDate.getDate() + 14);
+  const lastDate = getLastCycleDate();
+  if (lastDate) {
     const today = new Date();
     today.setHours(0,0,0,0);
-    daysToOrder = Math.max(0, Math.round((nextOrderDate - today) / (1000*60*60*24)));
+    daysToOrder = nextOrderDate ? Math.max(0, Math.round((nextOrderDate - today) / (1000*60*60*24))) : 0;
     daysSinceCount = Math.max(0, Math.round((today - lastDate) / (1000*60*60*24)));
   }
   // ── For each item, project from live SOH through remaining days to order ──
@@ -2657,7 +2667,11 @@ let pendingSOHData = null;
 
 async function executeSaveStockCount() {
   if (!scriptUrl) { alert('Google Sheets not connected. Go to Settings to connect.'); return; }
-  const date = document.getElementById('orderDate').value || new Date().toISOString().slice(0,10);
+  // Stamp today's date at the moment of saving — not manually managed
+  const today = new Date();
+  const dateEl = document.getElementById('orderDate');
+  if (dateEl) dateEl.valueAsDate = today;
+  const date = dateEl && dateEl.value ? dateEl.value : today.toISOString().slice(0,10);
   const sohData = {};
   Object.keys(allItems()).forEach(code => {
     const val = newSOH[code];
@@ -2767,38 +2781,66 @@ function renderStTopUsage() {
   el.innerHTML = html || '<div class="empty-state">No usage data</div>';
 }
 
-function updateNextOrderDue() {
-  // Last cycle date from CYCLES_LABELS e.g. "11/06/26"
+// ── NEXT ORDER DATE (single source of truth) ─────────────────────
+// Last saved cycle date, or null if no cycles saved yet.
+function getLastCycleDate() {
   const lastLabel = CYCLES_LABELS[CYCLES_LABELS.length - 1] || '';
   const parts = lastLabel.split('/');
-  if (parts.length !== 3) return;
-  const lastDate = new Date('20' + parts[2] + '-' + parts[1] + '-' + parts[0]);
-  // Next order = last order date + 14 days
+  if (parts.length !== 3) return null;
+  return new Date('20' + parts[2] + '-' + parts[1] + '-' + parts[0]);
+}
+// Next order due date — uses the manual override if staff have set one
+// (e.g. lead times changed), otherwise defaults to last cycle + 14 days.
+function getOrderFrequencyDays() {
+  const el = document.getElementById('orderFrequencyDays');
+  const v = el ? +el.value : NaN;
+  return (v && v > 0) ? v : 14;
+}
+function getNextOrderDate() {
+  if (nextOrderOverride) {
+    const d = new Date(nextOrderOverride + 'T00:00:00');
+    if (!isNaN(d)) return d;
+  }
+  const lastDate = getLastCycleDate();
+  if (!lastDate) return null;
   const nextDate = new Date(lastDate);
-  nextDate.setDate(nextDate.getDate() + 14);
-  // Format as DD/MM/YY
-  const d = String(nextDate.getDate()).padStart(2,'0');
-  const mo = String(nextDate.getMonth()+1).padStart(2,'0');
-  const yr = String(nextDate.getFullYear()).slice(2);
-  const dayName = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][nextDate.getDay()];
-  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  const el = document.getElementById('nextOrderDue');
+  nextDate.setDate(nextDate.getDate() + getOrderFrequencyDays());
+  return nextDate;
+}
+function setNextOrderDate(val) {
+  nextOrderOverride = val || null;
+  if (nextOrderOverride) localStorage.setItem('nextOrderDateOverride', nextOrderOverride);
+  else localStorage.removeItem('nextOrderDateOverride');
+  updateNextOrderDue();
+  try { updateLiveTicker(); } catch(e) {}
+}
+function resetNextOrderDate() {
+  nextOrderOverride = null;
+  localStorage.removeItem('nextOrderDateOverride');
+  updateNextOrderDue();
+  try { updateLiveTicker(); } catch(e) {}
+}
+
+function updateNextOrderDue() {
+  const nextDate = getNextOrderDate();
+  const inputEl = document.getElementById('nextOrderDateInput');
   const daysEl = document.getElementById('nextOrderDays');
-  if (el) el.textContent = `${dayName} ${d} ${months[nextDate.getMonth()]} '${yr}`;
+  const resetWrap = document.getElementById('nextOrderResetWrap');
+  if (!nextDate) return;
+  if (inputEl) inputEl.valueAsDate = nextDate;
+  if (resetWrap) resetWrap.style.display = nextOrderOverride ? 'inline' : 'none';
   // Days until next order
   const today = new Date();
   today.setHours(0,0,0,0);
   const daysUntil = Math.round((nextDate - today) / (1000*60*60*24));
   if (daysEl) {
-    if (daysUntil < 0) daysEl.textContent = `${Math.abs(daysUntil)} days overdue`;
-    else if (daysUntil === 0) daysEl.textContent = 'Due today!';
-    else daysEl.textContent = `in ${daysUntil} day${daysUntil===1?'':'s'}`;
+    let txt;
+    if (daysUntil < 0) txt = `${Math.abs(daysUntil)} days overdue`;
+    else if (daysUntil === 0) txt = 'Due today!';
+    else txt = `in ${daysUntil} day${daysUntil===1?'':'s'}`;
+    if (nextOrderOverride) txt += ' · manually set';
+    daysEl.textContent = txt;
     daysEl.style.color = daysUntil <= 2 ? 'var(--red)' : daysUntil <= 5 ? 'var(--amber)' : 'var(--ink3)';
-  }
-  // Also pre-fill the order date input if not already set
-  const orderDateEl = document.getElementById('orderDate');
-  if (orderDateEl && !orderDateEl.value) {
-    orderDateEl.valueAsDate = nextDate;
   }
 }
 
@@ -2808,19 +2850,18 @@ function showPredictedOrder() {
   const {lead, win} = getP();
   const cycDays = 14;
 
-  // Calculate next order date
-  const lastLabel = CYCLES_LABELS[CYCLES_LABELS.length - 1] || '';
-  const parts = lastLabel.split('/');
-  if (parts.length !== 3) return;
-  const lastDate = new Date('20' + parts[2] + '-' + parts[1] + '-' + parts[0]);
-  const nextOrderDate = new Date(lastDate);
-  nextOrderDate.setDate(nextOrderDate.getDate() + 14);
+  // Calculate next order date (respects manual override, else last cycle + 14 days)
+  const lastDate = getLastCycleDate();
+  if (!lastDate) return;
+  const nextOrderDate = getNextOrderDate();
+  if (!nextOrderDate) return;
   const today = new Date(); today.setHours(0,0,0,0);
   const daysToOrder2 = Math.max(0, Math.round((nextOrderDate - today) / (1000*60*60*24)));
   const daysSinceCount2 = Math.max(0, Math.round((today - lastDate) / (1000*60*60*24)));
   const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const dayNames = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
   const dateStr = `${nextOrderDate.getDate()} ${months[nextOrderDate.getMonth()]} '${String(nextOrderDate.getFullYear()).slice(2)}`;
-  document.getElementById('predOrderTitle').textContent = `Thu ${dateStr}`;
+  document.getElementById('predOrderTitle').textContent = `${dayNames[nextOrderDate.getDay()]} ${dateStr}`;
 
   // Build predicted order list
   const predicted = [];
@@ -3106,11 +3147,19 @@ function renderInactive() {
 // ── INIT ─────────────────────────────────────────────────────────
 // Restore persisted order params
 const savedLead = localStorage.getItem('leadDays');
-const savedWin  = localStorage.getItem('windowDays');
+// Order window (days) was merged into Order frequency (days) — same real-world number.
+// Migrate any previously-saved windowDays value once, then drop the old key.
+const savedFreq = localStorage.getItem('orderFrequencyDays') || localStorage.getItem('windowDays');
+if (localStorage.getItem('windowDays')) localStorage.removeItem('windowDays');
 if (savedLead) { const el = document.getElementById('leadDays');   if (el) el.value = savedLead; }
-if (savedWin)  { const el = document.getElementById('windowDays'); if (el) el.value = savedWin;  }
+if (savedFreq) { const el = document.getElementById('orderFrequencyDays'); if (el) el.value = savedFreq; }
 document.getElementById('leadDays').addEventListener('input', function() { localStorage.setItem('leadDays', this.value); updateTimeline(); });
-document.getElementById('windowDays').addEventListener('input', function() { localStorage.setItem('windowDays', this.value); updateTimeline(); });
+document.getElementById('orderFrequencyDays').addEventListener('input', function() {
+  localStorage.setItem('orderFrequencyDays', this.value);
+  updateTimeline();
+  try { updateNextOrderDue(); } catch(e) {}
+  try { updateLiveTicker(); } catch(e) {}
+});
 if(scriptUrl) { const inp = document.getElementById('scriptUrlInput'); if(inp) inp.value = scriptUrl; }
 buildCF('cf-stock','stockcount');buildCF('cf-hist','hist');buildCF('cf-inactive','inactive');
 updateTimeline();
