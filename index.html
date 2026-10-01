@@ -882,6 +882,7 @@ const BASE_HIST = {
 let liveHist    = JSON.parse(JSON.stringify(BASE_HIST)); // deep copy, updated from Sheets
 let customProds = {};
 let newSOH      = {};
+let estimatedSOH = new Set(); // codes whose current newSOH value is just an auto-estimate, not a real/confirmed count
 let activeCat   = JSON.parse(localStorage.getItem('activeCat') || 'null') || {stock:'All', stockcount:'All', proj:'All', hist:'All', setup:'All', inactive:'All'};
 let projData    = [];
 let orderAdjustments = {}; // code -> adjusted orderForms override
@@ -892,7 +893,7 @@ let pinCallback = null;
 let scriptUrl   = localStorage.getItem('sheetScriptUrl') || 'https://script.google.com/macros/s/AKfycbwpMvX5LcE_s0kz_fLcxwZEl9NJHz71OSaTyx_dcQwzurk72LMyfwVHIZk601ulCr8O/exec';
 
 // init SOH from last known cycle
-function initSOH(smart=false) {
+function initSOH(smart=false, force=false) {
   const today = new Date();
   // Parse last cycle date from CYCLES_LABELS e.g. "11/06/26"
   const lastLabel = CYCLES_LABELS[CYCLES_LABELS.length-1] || '';
@@ -904,6 +905,10 @@ function initSOH(smart=false) {
   const daysSinceLast = lastCycleDate ? Math.max(0, Math.round((today - lastCycleDate)/(1000*60*60*24))) : 0;
 
   Object.keys(allItems()).forEach(code => {
+    // Never silently overwrite a real/confirmed count (typed, restored, or applied from staff)
+    // with an auto-estimate — only recompute codes that are still just estimates, unless forced.
+    const hasConfirmedValue = newSOH[code] !== undefined && newSOH[code] !== null && newSOH[code] !== '' && !estimatedSOH.has(code);
+    if (hasConfirmedValue && !force) return;
     const it = allItems()[code];
     const last = it.cycles && it.cycles[it.cycles.length-1];
     const lastSOH = (last && last[0] !== null) ? last[0] : 0;
@@ -919,6 +924,7 @@ function initSOH(smart=false) {
     } else {
       newSOH[code] = baseSOH;
     }
+    estimatedSOH.add(code);
   });
 }
 
@@ -1289,7 +1295,7 @@ function renderStock() {
         <div class="soh-lbl">${it.physUnit}</div>
         <input type="number" inputmode="numeric" pattern="[0-9]*" min="0"
           value="${v}" class="soh-input${!isNew&&lastSoh==v?' pre':''}"
-          onchange="newSOH['${code}']=+this.value;saveNewSOH();updateLiveTicker();calcHealthScore();renderStockoutAlerts();colourSOH(this,${avg.toFixed(1)})" placeholder="0"/>
+          onchange="newSOH['${code}']=+this.value;estimatedSOH.delete('${code}');saveNewSOH();updateLiveTicker();calcHealthScore();renderStockoutAlerts();colourSOH(this,${avg.toFixed(1)})" placeholder="0"/>
       </div>
       <div class="soh-col">
         <div class="soh-lbl">Last</div>
@@ -1988,7 +1994,7 @@ function qcRender() {
       <input id="qcInput" type="number" inputmode="numeric" pattern="[0-9]*" min="0"
         value="${soh}"
         style="font-size:64px;font-weight:900;color:white;background:transparent;border:none;border-bottom:2px solid rgba(255,255,255,0.3);width:140px;text-align:center;font-family:inherit;line-height:1;margin:16px 0 4px;outline:none;-moz-appearance:textfield"
-        oninput="newSOH['${code}']=+this.value;saveNewSOH()"
+        oninput="newSOH['${code}']=+this.value;estimatedSOH.delete('${code}');saveNewSOH()"
         onfocus="this.style.borderBottomColor='var(--brand)'"
         onblur="this.style.borderBottomColor='rgba(255,255,255,0.3)'"
       />
@@ -2009,6 +2015,7 @@ function qcRender() {
 function qcAdj(delta) {
   const {code} = qcItems[qcIdx];
   newSOH[code] = Math.max(0, (newSOH[code] != null ? +newSOH[code] : 0) + delta);
+  estimatedSOH.delete(code);
   const inp = document.getElementById('qcInput');
   if (inp) inp.value = newSOH[code];
   saveNewSOH();
@@ -2019,6 +2026,7 @@ function qcNext() {
   if (inp) {
     const {code} = qcItems[qcIdx];
     newSOH[code] = Math.max(0, +inp.value || 0);
+    estimatedSOH.delete(code);
   }
   saveNewSOH();
   qcIdx++;
@@ -2417,7 +2425,7 @@ let smartPrefillActive = true;
 
 function enableSmartPrefill() {
   smartPrefillActive = true;
-  initSOH(true);
+  initSOH(true, true);
   renderStock();
   updateLiveTicker();
   calcHealthScore();
@@ -2426,7 +2434,7 @@ function enableSmartPrefill() {
 
 function disableSmartPrefill() {
   smartPrefillActive = false;
-  initSOH(false);
+  initSOH(false, true);
   renderStock();
   updateLiveTicker();
   calcHealthScore();
@@ -2738,6 +2746,7 @@ function applyPendingSOH() {
   const pendingDate = pendingSOHData.date; // capture before dismissPendingSOH() nulls pendingSOHData
   Object.entries(pendingSOHData.soh).forEach(([code, val]) => {
     newSOH[code] = val;
+    estimatedSOH.delete(code);
   });
   renderStock();
   updateLiveTicker();
@@ -3034,6 +3043,7 @@ function toggleHolidayUplift() {
 function clearStockCount() {
   if (!confirm('Clear all stock count entries and start fresh?')) return;
   Object.keys(allItems()).forEach(code => { newSOH[code] = ''; });
+  estimatedSOH.clear();
   localStorage.removeItem('newSOH');
   orderAdjustments = {};
   projData = [];
@@ -3152,6 +3162,7 @@ try {
   // Only restore if saved during the current cycle — discard stale sessions
   if (savedRaw && savedRaw.cycle === currentCycle && savedRaw.data) {
     Object.assign(newSOH, savedRaw.data);
+    Object.keys(savedRaw.data).forEach(code => estimatedSOH.delete(code));
   }
 } catch(e) {}
 renderStock(); renderHist();
