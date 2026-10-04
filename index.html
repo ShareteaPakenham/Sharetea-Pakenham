@@ -384,6 +384,33 @@ if(xr(e,"index.xml"))throw new Error("Unsupported NUMBERS 09 file");throw new Er
   </div>
 </div>
 
+<!-- EDIT ITEM MODAL -->
+<div class="modal-overlay hidden" id="editItemModal">
+  <div class="modal" style="max-width:360px;text-align:left">
+    <h2 style="text-align:center">✏️ Edit item</h2>
+    <div style="font-size:12px;color:var(--ink3);text-align:center;margin-bottom:10px" id="editItemCodeLabel"></div>
+    <input class="param-input" id="editName" placeholder="Product name" style="width:100%;margin-bottom:8px"/>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+      <input class="param-input" id="editPhysUnit" placeholder="Physical unit (e.g. bags)"/>
+      <input class="param-input" id="editOrderUnit" placeholder="Order unit (e.g. box of 20)"/>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:8px">
+      <input type="number" class="param-input" id="editMult" placeholder="Qty/box"/>
+      <input type="number" class="param-input" id="editPrice" placeholder="Price/box $"/>
+      <select class="param-input" id="editCat">
+        <option value="Tea Leaves">Tea Leaves</option>
+        <option value="Flavor Powder">Flavor Powder</option>
+        <option value="Syrup &amp; Jam">Syrup &amp; Jam</option>
+        <option value="Toppings">Toppings</option>
+        <option value="Packaging">Packaging</option>
+        <option value="Merchandise">Merchandise</option>
+      </select>
+    </div>
+    <button class="modal-btn modal-btn-primary" onclick="saveItemEdit()">Save changes</button>
+    <button class="modal-btn modal-btn-secondary" onclick="closeItemEdit()">Cancel</button>
+  </div>
+</div>
+
 <!-- PAGE: STOCK COUNT -->
 <div class="page active" id="page-stock">
 
@@ -818,7 +845,6 @@ const BASE_HIST = {
   '2010':{name:'Thai Powder',cat:'Flavor Powder',physUnit:'bags',orderUnit:'BOX',minForms:1,pricePerBox:360,mult:20,cycles:[[17,0],[15,0],[12,0],[11,0],[10,0],[8,0],[7,0],[6,0],[5,0]]},
   '2027':{name:'Coffee Mate (20kg)',cat:'Flavor Powder',physUnit:'bags',orderUnit:'bag',minForms:1,pricePerBox:160,mult:1,cycles:[[2,1],[2,1],[1,2],[3,0],[1,2],[2,1],[2,1],[2,0],[1,1]]},
   '2033':{name:'Taro Powder',cat:'Flavor Powder',physUnit:'bags',orderUnit:'BOX',minForms:1,pricePerBox:360,mult:20,cycles:[[15,0],[9,1],[15,0],[7,1],[22,0],[16,0],[13,0],[9,0],[5,1]]},
-  '2040':{name:'Premium Match',cat:'Flavor Powder',physUnit:'bags',orderUnit:'box (1 bag)',minForms:1,pricePerBox:39,mult:1,cycles:[[null,0],[null,0],[null,0],[null,0],[null,0],[null,0],[null,0],[null,0],[null,0]]},
   '2028':{name:'Thick Milk (Ice Blanc)',cat:'Flavor Powder',physUnit:'btls',orderUnit:'carton (12)',minForms:1,pricePerBox:114,mult:12,cycles:[[null,0],[null,0],[null,0],[null,0],[null,0],[null,0],[60,0],[null,0],[null,0]]},
   // Syrup & Jam
   '3003':{name:'Lemon Syrup',cat:'Syrup & Jam',physUnit:'btls',orderUnit:'box (6)',minForms:1,pricePerBox:120,mult:6,cycles:[[5,0],[4,0],[6,0],[4,0],[3,0],[2,0],[1,1],[6,0],[4,0]]},
@@ -982,6 +1008,19 @@ function restoreLiveHist() {
       CYCLES_LABELS.length = 0;
       savedLabels.forEach(l => CYCLES_LABELS.push(l));
     }
+  } catch(e) {}
+}
+
+// customProds previously had no persistence at all — any custom product (and any
+// item-level edit made via the Edit item screen) vanished on the next reload.
+// Same pattern as persistLiveHist/restoreLiveHist above, mirrored for customProds.
+function persistCustomProds() {
+  try { localStorage.setItem('customProds', JSON.stringify(customProds)); } catch(e) {}
+}
+function restoreCustomProds() {
+  try {
+    const saved = JSON.parse(localStorage.getItem('customProds') || 'null');
+    if (saved) Object.assign(customProds, saved);
   } catch(e) {}
 }
 
@@ -1290,7 +1329,7 @@ function renderStock() {
     html += `<div class="item-row">
       <div>
         <div class="item-name" style="display:flex;align-items:center">${it.name}${isNew?'<span class="new-pill" style="margin-left:5px">new</span>':''}${priorityDot}</div>
-        <div class="item-meta">${code} · ${it.mult>1?'1 '+it.orderUnit+' = '+it.mult+' '+it.physUnit:'order: '+it.orderUnit}</div>
+        <div class="item-meta">${code} · ${it.mult>1?'1 '+it.orderUnit+' = '+it.mult+' '+it.physUnit:'order: '+it.orderUnit} <span onclick="startEditItem('${code}')" style="cursor:pointer;color:var(--ink3)" title="Edit item">✏️</span></div>
       </div>
       <div class="soh-col">
         <div class="soh-lbl">${it.physUnit}</div>
@@ -1460,6 +1499,7 @@ function addCustomItem() {
   if(!cat){alert('Please select a category.');return;}
   if(!physUnit){alert('Please enter the physical unit.');return;}
   customProds[code]={name,cat,physUnit,orderUnit,minForms:1,pricePerBox,mult,cycles:Array(8).fill(null).map(()=>[null,0])};
+  persistCustomProds();
   newSOH[code]=soh;
   ['newName','newCode','newPhysUnit','newOrderUnit','newMult','newPrice'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('newCat').value='';
@@ -1470,7 +1510,60 @@ function addCustomItem() {
 }
 function removeCustom(code){
   delete customProds[code]; delete newSOH[code];
+  persistCustomProds();
   renderCustomList(); buildCF('cf-stock','stockcount'); buildCF('cf-hist','hist'); renderStock();
+}
+
+// ── EDIT ITEM (built-in or custom) ───────────────────────────────
+let editingItemCode = null;
+function startEditItem(code) {
+  const it = allItemsIncInactive()[code];
+  if (!it) return;
+  editingItemCode = code;
+  document.getElementById('editItemCodeLabel').textContent = 'Item ' + code;
+  document.getElementById('editName').value = it.name;
+  document.getElementById('editPhysUnit').value = it.physUnit;
+  document.getElementById('editOrderUnit').value = it.orderUnit;
+  document.getElementById('editMult').value = it.mult;
+  document.getElementById('editPrice').value = it.pricePerBox;
+  document.getElementById('editCat').value = it.cat;
+  document.getElementById('editItemModal').classList.remove('hidden');
+}
+function closeItemEdit() {
+  document.getElementById('editItemModal').classList.add('hidden');
+  editingItemCode = null;
+}
+function saveItemEdit() {
+  const code = editingItemCode;
+  if (!code) return;
+  const name = document.getElementById('editName').value.trim();
+  const physUnit = document.getElementById('editPhysUnit').value.trim();
+  const orderUnit = document.getElementById('editOrderUnit').value.trim() || physUnit;
+  const mult = +document.getElementById('editMult').value || 1;
+  const pricePerBox = +document.getElementById('editPrice').value || 0;
+  const cat = document.getElementById('editCat').value;
+  if (!name) { alert('Please enter a product name.'); return; }
+  if (!cat) { alert('Please select a category.'); return; }
+  if (!physUnit) { alert('Please enter the physical unit.'); return; }
+  if (customProds[code]) {
+    Object.assign(customProds[code], {name, cat, physUnit, orderUnit, mult, pricePerBox});
+    persistCustomProds();
+  } else if (liveHist[code]) {
+    Object.assign(liveHist[code], {name, cat, physUnit, orderUnit, mult, pricePerBox});
+    persistLiveHist();
+  } else {
+    alert('Could not find this item to update.');
+    return;
+  }
+  closeItemEdit();
+  buildCF('cf-stock','stockcount');buildCF('cf-hist','hist');buildCF('cf-inactive','inactive');
+  renderStock(); renderHist();
+  try { renderCustomList(); } catch(e) {}
+  try { updateLiveTicker(); } catch(e) {}
+  try { calcHealthScore(); } catch(e) {}
+  try { renderStockoutAlerts(); } catch(e) {}
+  try { requestAnimationFrame(renderDashboard); } catch(e) {}
+  alert(`"${name}" updated!`);
 }
 function renderCustomList(){
   const keys=Object.keys(customProds);
@@ -3153,6 +3246,11 @@ if (!localStorage.getItem('inactiveItems')) {
   ALWAYS_INACTIVE.forEach(code => inactiveItems.add(code));
   localStorage.setItem('inactiveItems', JSON.stringify([...inactiveItems]));
 }
+
+// Restore any persisted custom products and edited item fields before the very first
+// render, so they're visible immediately rather than only after a successful Sheets sync.
+restoreCustomProds();
+restoreLiveHist();
 
 // Always render with built-in data immediately
 initSOH(true);
